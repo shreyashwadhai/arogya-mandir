@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..800;1,9..40,300..800&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  font-family: 'DM Sans', 'Inter', 'Noto Sans Devanagari', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0A101D;
+  color: #F8FAFC;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Inter', 'DM Sans', sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings: Calm, warm DM Sans typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  h1 {
+    font-weight: 800;
+  }
+  h2 {
+    font-weight: 800;
+  }
+}
+
+/* Responsive font weights for buttons and form elements */
+button, input, select, textarea {
+  font-family: 'DM Sans', 'Inter', sans-serif;
+}
+
+/* Accessibility font sizes */
+html.font-normal {
+  font-size: 16px;
+}
+html.font-large {
+  font-size: 18px;
+}
+html.font-xlarge {
+  font-size: 20px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A101D;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Hide scrollbar utility class */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Focus outline for keyboard navigation */
+/* :focus-visible {
+  outline: 2px solid #F59E0B !important;
+  outline-offset: 2px !important;
+} */
