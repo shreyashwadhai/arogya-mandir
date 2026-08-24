@@ -6,7 +6,7 @@ import { toggleFacilityModal } from "../../redux/features/facilitySlice";
 import { translations } from "../../translations/languages";
 import { motion } from "framer-motion";
 import { Icon } from "@iconify/react";
-import FeedbackQR from "../../assets/feedback-qr.png";
+import FeedbackQR from "../../assets/feedback-qr.jpeg";
 
 export const Step01QRScan: React.FC = () => {
   const dispatch = useDispatch();

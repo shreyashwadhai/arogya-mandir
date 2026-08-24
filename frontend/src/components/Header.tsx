@@ -5,7 +5,6 @@ import {
   setSelectedLanguage,
   setCurrentStep,
 } from "../redux/features/journeySlice";
-import { toggleFacilityModal } from "../redux/features/facilitySlice";
 import { Icon } from "@iconify/react";
 
 interface HeaderProps {
@@ -13,13 +12,10 @@ interface HeaderProps {
   setViewMode: (mode: "single" | "all") => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ viewMode, setViewMode }) => {
+export const Header: React.FC<HeaderProps> = () => {
   const dispatch = useDispatch();
   const selectedLanguage = useSelector(
     (state: RootState) => state.journey.selectedLanguage,
-  );
-  const selectedFacility = useSelector(
-    (state: RootState) => state.facility.selectedFacility,
   );
 
   return (
@@ -30,7 +26,7 @@ export const Header: React.FC<HeaderProps> = ({ viewMode, setViewMode }) => {
           className="flex items-center gap-2.5 cursor-pointer"
           onClick={() => dispatch(setCurrentStep(1))}
         >
-          <div className="w-10 h-10 border border-white rounded-full text-white flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 border border-white rounded-full text-white flex items-center justify-center shrink-0 shadow-sm">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -40,9 +36,9 @@ export const Header: React.FC<HeaderProps> = ({ viewMode, setViewMode }) => {
               <g
                 fill="none"
                 stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.5"
               >
                 <path d="M9.349 3.434a2.684 2.684 0 1 0 5.368 0a2.684 2.684 0 0 0-5.368 0m5.881 9.191a1.888 1.888 0 0 1 1.807 2.523m-5.004-9.03V23.25" />
                 <path d="M14.494 4.5h7.889c2.677 0-1.2 6.453-6.772 4.3M9.569 4.5H1.682c-2.676 0 1.2 6.453 6.772 4.3m.381 3.825A1.9 1.9 0 0 0 6.916 14.5a1.975 1.975 0 0 0 1.919 1.964h5.116a1.92 1.92 0 0 1 0 3.838h-3.517a1.64 1.64 0 0 0-1.6 1.675a1.7 1.7 0 0 0 .531 1.247" />
@@ -51,7 +47,7 @@ export const Header: React.FC<HeaderProps> = ({ viewMode, setViewMode }) => {
           </div>
           <div>
             <div className="text-[10px] md:text-xs font-bold tracking-wider text-slate-400">
-              Goverment Of India
+              Government Of India
             </div>
             <div className="text-sm md:text-md uppercase font-bold md:font-extrabold text-white leading-tight">
               Arogya Mandir
@@ -59,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ viewMode, setViewMode }) => {
           </div>
         </div>
 
-        {/* Right Controls: Language Selector & Facility */}
+        {/* Right Controls: Language Selector & Gov Badge */}
         <div className="flex items-center gap-2">
           {/* Language Selector Dropdown */}
           <div className="relative">
@@ -72,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({ viewMode, setViewMode }) => {
                   ),
                 )
               }
-              className="appearance-none bg-slate-900 border border-slate-700 hover:border-amber-500/50 text-white text-xs font-bold py-1.5 pl-7 pr-2 rounded-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-sm"
+              className="appearance-none bg-slate-900 border border-slate-700 hover:border-amber-500/50 text-white text-xs font-bold py-1.5 pl-7 pr-7 rounded-xl cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-sm"
             >
               <option value="en">English</option>
               <option value="hi">हिंदी (Hindi)</option>
@@ -87,36 +83,8 @@ export const Header: React.FC<HeaderProps> = ({ viewMode, setViewMode }) => {
             </div>
           </div>
 
-          <div className="hidden sm:flex px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30 text-[10px] font-bold uppercase tracking-wider items-center gap-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="1.4em"
-              height="1.4em"
-              viewBox="0 0 48 48"
-            >
-              <path d="M0 0h48v48H0z" fill="none" />
-              <defs>
-                <mask id="SVGM7aMbcQo">
-                  <g
-                    fill="none"
-                    stroke="#fff"
-                    stroke-linejoin="round"
-                    stroke-width="4"
-                  >
-                    <path
-                      fill="#555"
-                      d="M6 9.256L24.009 4L42 9.256v10.778A26.32 26.32 0 0 1 24.003 45A26.32 26.32 0 0 1 6 20.029z"
-                    />
-                    <path stroke-linecap="round" d="m15 23l7 7l12-12" />
-                  </g>
-                </mask>
-              </defs>
-              <path
-                fill="currentColor"
-                d="M0 0h48v48H0z"
-                mask="url(#SVGM7aMbcQo)"
-              />
-            </svg>
+          <div className="hidden md:flex px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30 text-[10px] font-bold uppercase tracking-wider items-center gap-1">
+            <Icon icon="ph:check-circle-bold" className="w-3.5 h-3.5 text-teal-400" />
             <span className="font-semibold">GOVT. VERIFIED</span>
           </div>
         </div>

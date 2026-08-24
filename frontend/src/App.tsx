@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from './redux/store';
 import { Header } from './components/Header';
 import { Step01QRScan } from './components/steps/Step01QRScan';
@@ -8,11 +8,51 @@ import { Step03OTPVerification } from './components/steps/Step03OTPVerification'
 import { Step05FeedbackInterview } from './components/steps/Step05FeedbackInterview';
 import { Step06Confirmation } from './components/steps/Step06Confirmation';
 import { FacilityModal } from './components/FacilityModal';
+import { AdminLoginPage } from './components/admin/AdminLoginPage';
+import { AdminDashboardPage } from './components/admin/AdminDashboardPage';
+import { openAdminModal, closeAdminModal } from './redux/features/adminSlice';
 import { AnimatePresence } from 'framer-motion';
 
 export const App: React.FC = () => {
+  const dispatch = useDispatch();
   const currentStep = useSelector((state: RootState) => state.journey.currentStep);
+  const showAdminModal = useSelector((state: RootState) => state.admin.showAdminModal);
+  const isAuthenticated = useSelector((state: RootState) => state.admin.isAuthenticated);
+
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
+  const [isAdminPath, setIsAdminPath] = useState(false);
+
+  // Route listener for /admin URL
+  useEffect(() => {
+    const checkAdminRoute = () => {
+      const path = window.location.pathname.toLowerCase();
+      const isAdmin = path === '/admin' || path === '/admin/' || path.endsWith('/admin');
+      setIsAdminPath(isAdmin);
+      if (isAdmin) {
+        dispatch(openAdminModal());
+      }
+    };
+
+    checkAdminRoute();
+    window.addEventListener('popstate', checkAdminRoute);
+    return () => window.removeEventListener('popstate', checkAdminRoute);
+  }, [dispatch]);
+
+  const handleBackToPatientForm = () => {
+    dispatch(closeAdminModal());
+    setIsAdminPath(false);
+    if (window.location.pathname.toLowerCase().includes('/admin')) {
+      window.history.pushState({}, '', '/');
+    }
+  };
+
+  // If user navigated to /admin or opened admin mode, render full-screen Admin Pages!
+  if (showAdminModal || isAdminPath) {
+    if (!isAuthenticated) {
+      return <AdminLoginPage onBackToPatientForm={handleBackToPatientForm} />;
+    }
+    return <AdminDashboardPage onBackToPatientForm={handleBackToPatientForm} />;
+  }
 
   const renderStep = () => {
     switch (currentStep) {
