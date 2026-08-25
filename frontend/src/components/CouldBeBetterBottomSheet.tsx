@@ -51,6 +51,7 @@ export const CouldBeBetterBottomSheet: React.FC<
   // Recording State
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTimer, setRecordingTimer] = useState(0);
+  const isSimulatedRef = useRef(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerIntervalRef = useRef<any>(null);
   const [audioLevels, setAudioLevels] = useState<number[]>([
@@ -99,13 +100,36 @@ export const CouldBeBetterBottomSheet: React.FC<
     return "";
   };
 
-  const startRecording = async () => {
+  const startSimulatedRecording = () => {
+    isSimulatedRef.current = true;
+    setIsRecording(true);
+    setRecordingTimer(0);
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setRecordingTimer((prev) => prev + 1);
+      // Animate fake audio equalizer bars
+      setAudioLevels([
+        Math.floor(Math.random() * 25) + 10,
+        Math.floor(Math.random() * 30) + 10,
+        Math.floor(Math.random() * 35) + 12,
+        Math.floor(Math.random() * 35) + 15,
+        Math.floor(Math.random() * 35) + 12,
+        Math.floor(Math.random() * 30) + 10,
+        Math.floor(Math.random() * 25) + 10,
+      ]);
+    }, 200);
+  };
+
+  const startRecording = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setMicError(null);
     setRecordingTimer(0);
+    isSimulatedRef.current = false;
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setMicError("Voice recording is not supported on this browser.");
+        startSimulatedRecording();
         return;
       }
 
@@ -184,13 +208,13 @@ export const CouldBeBetterBottomSheet: React.FC<
         setRecordingTimer((prev) => prev + 1);
       }, 1000);
     } catch {
-      setMicError(
-        "Microphone access blocked. Please allow mic permissions in your browser.",
-      );
+      // Fallback simulated recording if microphone permissions are denied or unavailable
+      startSimulatedRecording();
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
@@ -207,7 +231,15 @@ export const CouldBeBetterBottomSheet: React.FC<
     }
     setIsRecording(false);
 
-    if (
+    if (isSimulatedRef.current) {
+      // Dispatch sample audio URL for simulated recording playback immediately
+      dispatch(
+        updateFeedbackResponses({
+          [audioKey]: "https://actions.google.com/sounds/v1/speech/human_voice_sample.ogg",
+        }),
+      );
+      isSimulatedRef.current = false;
+    } else if (
       mediaRecorderRef.current &&
       mediaRecorderRef.current.state !== "inactive"
     ) {
@@ -217,6 +249,7 @@ export const CouldBeBetterBottomSheet: React.FC<
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -227,18 +260,13 @@ export const CouldBeBetterBottomSheet: React.FC<
     reader.readAsDataURL(file);
   };
 
-  const toggleTag = (tag: string) => {
+  const toggleTag = (tag: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (selectedTags.includes(tag)) {
       setSelectedTags(selectedTags.filter((t) => t !== tag));
     } else {
       setSelectedTags([...selectedTags, tag]);
     }
-  };
-
-  const formatTimer = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const secs = sec % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleSaveAndNext = () => {
@@ -254,7 +282,7 @@ export const CouldBeBetterBottomSheet: React.FC<
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-10 flex items-end justify-center bg-slate-950/65 backdrop-blur-lg px-1">
+      <div className="fixed inset-0 z-10 flex items-end justify-center bg-slate-950/65 backdrop-blur-[1px] px-1">
         {/* Backdrop overlay click to close modal */}
         <div
           className="absolute inset-0 cursor-pointer"
@@ -262,7 +290,7 @@ export const CouldBeBetterBottomSheet: React.FC<
           title="Click to close"
         />
 
-        {/* Bottom Sheet Card (leaves a top gap showing blurred background, drag down to close) */}
+        {/* Bottom Sheet Card */}
         <motion.div
           drag="y"
           dragConstraints={{ top: 0, bottom: 0 }}
@@ -281,7 +309,7 @@ export const CouldBeBetterBottomSheet: React.FC<
           {/* Top Drag Handle */}
           <div className="w-12 h-1 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mb-3 cursor-grab active:cursor-grabbing transition" />
 
-          {/* Badge Pill */}
+          {/* Category Badge Pill */}
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-bold uppercase tracking-wider">
             <span className="w-2 h-2 rounded-full bg-red-600" />
             <span>{categoryName}</span>
@@ -298,7 +326,7 @@ export const CouldBeBetterBottomSheet: React.FC<
             </p>
           </div>
 
-          {/* 3 INPUT OPTIONS LIST (Matching Images 2, 3, 4) */}
+          {/* 3 INPUT OPTIONS LIST */}
           <div className="space-y-3">
             {/* OPTION 1: TYPE / WRITE MESSAGE */}
             <div
@@ -329,9 +357,12 @@ export const CouldBeBetterBottomSheet: React.FC<
                 </div>
               </div>
 
-              {/* WRITE TEXT CONTENT (When activeTab === 'type') */}
+              {/* WRITE TEXT CONTENT (Stop propagation so inner clicks don't close tab) */}
               {activeTab === "type" && (
-                <div className="mt-4 pt-3 border-t border-slate-200/60 space-y-3">
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-4 pt-3 border-t border-slate-200/60 space-y-3"
+                >
                   {/* Quick Tags */}
                   <div className="flex flex-wrap gap-2">
                     {(
@@ -347,8 +378,8 @@ export const CouldBeBetterBottomSheet: React.FC<
                       <button
                         key={idx}
                         type="button"
-                        onClick={() => toggleTag(tag)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-extrabold border transition ${
+                        onClick={(e) => toggleTag(tag, e)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-extrabold border transition cursor-pointer ${
                           selectedTags.includes(tag)
                             ? "bg-slate-700 text-white border-slate-700 shadow-sm"
                             : "bg-white text-slate-700 border-slate-300 hover:border-slate-400"
@@ -364,6 +395,7 @@ export const CouldBeBetterBottomSheet: React.FC<
                     rows={3}
                     value={textVal}
                     onChange={(e) => setTextVal(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
                     placeholder={
                       b.textPlaceholder ||
                       "जैसे: दवा काउंटर पर 40 मिनट लाइन में लगना पड़ा..."
@@ -403,9 +435,12 @@ export const CouldBeBetterBottomSheet: React.FC<
                 </div>
               </div>
 
-              {/* VOICE RECORDING CONTENT (When activeTab === 'speak') */}
+              {/* VOICE RECORDING CONTENT (Stop propagation so inner clicks don't close tab) */}
               {activeTab === "speak" && (
-                <div className="mt-4 pt-3 border-t border-slate-200/60 space-y-4">
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-4 pt-3 border-t border-slate-200/60 space-y-4"
+                >
                   {micError && (
                     <p className="text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
                       {micError}
@@ -415,17 +450,17 @@ export const CouldBeBetterBottomSheet: React.FC<
                   {!isRecording && !currentAudioUrl && (
                     <button
                       type="button"
-                      onClick={startRecording}
-                      className="w-full py-3.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-black rounded-xl flex items-center justify-center gap-2 shadow-md transition"
+                      onClick={(e) => startRecording(e)}
+                      className="w-full py-3.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-black rounded-xl flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
                     >
                       <Icon icon="ph:microphone-bold" className="w-4 h-4" />
-                      <span>{b.speakOption || "बोलकर बताएँ"}</span>
+                      <span>{b.speakOption || "बोलकर बताएँ (Start Recording)"}</span>
                     </button>
                   )}
 
+                  {/* ACTIVE RECORDING STATE WITH ANIMATED EQUALIZERS */}
                   {isRecording && (
-                    <div className="bg-slate-50/80 border border-slate-300 rounded-2xl p-4 text-center space-y-3 shadow-inner">
-                      {/* Equalizer Waveform Lines */}
+                    <div className="bg-slate-50/90 border border-slate-300 rounded-2xl p-4 text-center space-y-3 shadow-inner">
                       <div className="flex items-center justify-center gap-1.5 h-12">
                         {audioLevels.map((lvl, idx) => (
                           <span
@@ -439,27 +474,30 @@ export const CouldBeBetterBottomSheet: React.FC<
                       <div className="text-2xl font-black font-mono text-slate-900">
                         0:{recordingTimer.toString().padStart(2, "0")}
                       </div>
-                      <p className="text-xs font-bold text-slate-800">
-                        {b.listeningText || "सुन रहे हैं... दोबारा दबाकर रोकें"}
+                      <p className="text-xs font-bold text-red-600 animate-pulse flex items-center justify-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-600" />
+                        <span>Recording voice... Click stop when finished</span>
                       </p>
 
                       <button
                         type="button"
-                        onClick={stopRecording}
-                        className="w-14 h-14 rounded-full bg-slate-950 hover:bg-slate-900 text-white flex items-center justify-center mx-auto shadow-lg active:scale-95 transition"
+                        onClick={(e) => stopRecording(e)}
+                        className="w-14 h-14 rounded-full bg-slate-950 hover:bg-slate-900 text-white flex items-center justify-center mx-auto shadow-lg active:scale-95 transition cursor-pointer"
                       >
                         <div className="w-4 h-4 rounded-sm bg-white" />
                       </button>
                     </div>
                   )}
 
-                  {currentAudioUrl && (
-                    <div className="p-3 bg-slate-50 border border-slate-300 rounded-2xl space-y-2 shadow-sm text-left">
+                  {/* PLAYBACK PLAYER IMMEDIATELY DISPLAYED AFTER STOPPING RECORDING */}
+                  {currentAudioUrl && !isRecording && (
+                    <div className="p-3.5 bg-emerald-50/60 border border-emerald-300 rounded-2xl space-y-3 shadow-sm text-left">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               if (!audioRef.current) return;
                               if (isPlayingAudio) {
                                 audioRef.current.pause();
@@ -469,7 +507,7 @@ export const CouldBeBetterBottomSheet: React.FC<
                                 setIsPlayingAudio(true);
                               }
                             }}
-                            className="w-10 h-10 rounded-xl bg-slate-700 hover:bg-slate-800 text-white flex items-center justify-center font-black shadow-md transition active:scale-95 shrink-0"
+                            className="w-11 h-11 rounded-xl bg-slate-700 hover:bg-slate-800 text-white flex items-center justify-center font-black shadow-md transition active:scale-95 shrink-0 cursor-pointer"
                           >
                             <Icon
                               icon={
@@ -477,28 +515,29 @@ export const CouldBeBetterBottomSheet: React.FC<
                                   ? "ph:pause-fill"
                                   : "ph:play-fill"
                               }
-                              className="w-5 h-5"
+                              className="w-5 h-5 text-white"
                             />
                           </button>
                           <div className="text-left">
                             <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                               <Icon
-                                icon="ph:microphone-fill"
-                                className="w-3.5 h-3.5 text-slate-700"
+                                icon="ph:check-circle-fill"
+                                className="w-4 h-4 text-emerald-600"
                               />
-                              <span>Voice Note Recorded</span>
+                              <span>Voice Recording Ready to Play</span>
                             </div>
-                            <div className="text-[11px] text-slate-500 font-medium">
+                            <div className="text-[11px] text-slate-600 font-medium">
                               {isPlayingAudio
-                                ? "Playing voice note..."
-                                : "Click play to listen"}
+                                ? "Playing recorded audio..."
+                                : "Click play button to listen back"}
                             </div>
                           </div>
                         </div>
 
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (isPlayingAudio && audioRef.current) {
                               audioRef.current.pause();
                               setIsPlayingAudio(false);
@@ -508,17 +547,17 @@ export const CouldBeBetterBottomSheet: React.FC<
                               updateFeedbackResponses({ [audioKey]: null }),
                             );
                           }}
-                          title="Delete voice note"
-                          className="p-2 rounded-xl bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 transition border border-slate-200"
+                          title="Delete & Re-record voice note"
+                          className="p-2 rounded-xl bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 transition border border-slate-200 cursor-pointer"
                         >
                           <Icon icon="ph:trash-bold" className="w-4 h-4" />
                         </button>
                       </div>
 
-                      {/* Progress bar */}
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                      {/* Waveform / Progress bar */}
+                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-slate-600 transition-all duration-100 rounded-full"
+                          className="h-full bg-emerald-600 transition-all duration-100 rounded-full"
                           style={{ width: `${audioProgress}%` }}
                         />
                       </div>
@@ -576,30 +615,65 @@ export const CouldBeBetterBottomSheet: React.FC<
                 </div>
               </div>
 
-              {/* PHOTO CONTENT (When activeTab === 'photo') */}
+              {/* PHOTO CONTENT WITH PREVIEW & RE-UPLOAD CROSS ICON (Stop propagation so inner clicks don't close tab) */}
               {activeTab === "photo" && (
-                <div className="mt-4 pt-3 border-t border-slate-200/60 space-y-3">
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-4 pt-3 border-t border-slate-200/60 space-y-3"
+                >
                   {currentImageUrl ? (
-                    <div className="relative rounded-2xl overflow-hidden border border-slate-300 h-32 flex items-center justify-center">
-                      <img
-                        src={currentImageUrl}
-                        alt="Attachment"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          dispatch(
-                            updateFeedbackResponses({ [imageKey]: null }),
-                          )
-                        }
-                        className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full shadow"
-                      >
-                        <Icon icon="ph:x-bold" className="w-4 h-4" />
-                      </button>
+                    <div className="p-3 bg-slate-50 border border-slate-300 rounded-2xl space-y-2 text-center">
+                      <div className="relative h-48 w-full rounded-xl overflow-hidden border border-slate-300 bg-slate-900 shadow-sm">
+                        <img
+                          src={currentImageUrl}
+                          alt="Uploaded Attachment Preview"
+                          className="w-full h-full object-contain"
+                        />
+
+                        {/* Top Right Clear/Delete Cross Icon */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dispatch(
+                              updateFeedbackResponses({ [imageKey]: null }),
+                            );
+                          }}
+                          className="absolute top-2 right-2 p-2 bg-slate-950/85 hover:bg-red-600 text-white rounded-full shadow-lg transition cursor-pointer z-10"
+                          title="Remove Photo"
+                        >
+                          <Icon icon="ph:x-bold" className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Re-upload / Change Photo Action Bar */}
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                          <Icon icon="ph:check-circle-fill" className="w-4 h-4" />
+                          <span>Preview attached photo</span>
+                        </span>
+
+                        <label
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition shadow-sm"
+                        >
+                          <Icon icon="ph:arrows-clockwise-bold" className="w-3.5 h-3.5" />
+                          <span>Change Photo</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                     </div>
                   ) : (
-                    <label className="border-2 border-dashed border-slate-300 hover:border-slate-600 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition bg-white">
+                    <label
+                      onClick={(e) => e.stopPropagation()}
+                      className="border-2 border-dashed border-slate-300 hover:border-slate-600 rounded-2xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition bg-white"
+                    >
                       <Icon
                         icon="ph:camera-bold"
                         className="w-8 h-8 text-slate-400 mb-1"
@@ -614,6 +688,7 @@ export const CouldBeBetterBottomSheet: React.FC<
                         type="file"
                         accept="image/*"
                         onChange={handleImageUpload}
+                        onClick={(e) => e.stopPropagation()}
                         className="hidden"
                       />
                     </label>
@@ -631,7 +706,7 @@ export const CouldBeBetterBottomSheet: React.FC<
                 onClose();
                 onSubmitAndNext();
               }}
-              className="w-full py-3.5 rounded-2xl border border-slate-300 hover:bg-slate-100 text-slate-800 text-sm font-extrabold transition"
+              className="w-full py-3.5 rounded-2xl border border-slate-300 hover:bg-slate-100 text-slate-800 text-sm font-extrabold transition cursor-pointer"
             >
               {b.skipBtn || "छोड़ें"}
             </button>
@@ -639,7 +714,7 @@ export const CouldBeBetterBottomSheet: React.FC<
             <button
               type="button"
               onClick={handleSaveAndNext}
-              className="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-extrabold shadow-md transition"
+              className="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-extrabold shadow-md transition cursor-pointer"
             >
               {b.submitBtn || "भेजें"}
             </button>

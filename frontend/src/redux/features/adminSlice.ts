@@ -15,10 +15,25 @@ export interface AdminState {
   records: FeedbackRecord[];
 }
 
+// Read persisted session storage if user refreshed page
+const getSavedAuth = () => {
+  if (typeof window !== 'undefined') {
+    return sessionStorage.getItem('adminAuthenticated') === 'true';
+  }
+  return false;
+};
+
+const getSavedEmail = () => {
+  if (typeof window !== 'undefined') {
+    return sessionStorage.getItem('adminEmail') || null;
+  }
+  return null;
+};
+
 const initialState: AdminState = {
-  isAuthenticated: false,
-  adminEmail: null,
-  showAdminModal: false,
+  isAuthenticated: getSavedAuth(),
+  adminEmail: getSavedEmail(),
+  showAdminModal: getSavedAuth(),
   activeTab: 'analytics',
   searchQuery: '',
   ratingFilter: 'ALL',
@@ -45,10 +60,19 @@ export const adminSlice = createSlice({
     loginAdmin: (state, action: PayloadAction<string>) => {
       state.isAuthenticated = true;
       state.adminEmail = action.payload;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('adminAuthenticated', 'true');
+        sessionStorage.setItem('adminEmail', action.payload);
+      }
     },
     logoutAdmin: (state) => {
       state.isAuthenticated = false;
       state.adminEmail = null;
+      state.showAdminModal = false;
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('adminAuthenticated');
+        sessionStorage.removeItem('adminEmail');
+      }
     },
     setActiveTab: (state, action: PayloadAction<'analytics' | 'feedbacks' | 'grievances' | 'facilities'>) => {
       state.activeTab = action.payload;

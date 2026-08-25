@@ -2,22 +2,21 @@ import React, { useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../redux/store";
 import {
-  closeAdminModal,
   logoutAdmin,
   setSearchQuery,
   setRatingFilter,
   setMediaFilter,
   setStatusFilter,
   openDetailModal,
+  updateRecordStatus,
 } from "../../redux/features/adminSlice";
 import {
   AdminCharts,
-  VisitsSparkline,
-  PaymentsSparkline,
-  OperationEffectRing,
+  MonthOnMonthScoreChart,
+  WeekOnWeekAreaChart,
 } from "./AdminCharts";
 import { UserFeedbackDetailModal } from "./UserFeedbackDetailModal";
-import { AudioPlayerWidget } from "./AudioPlayerWidget";
+import { exportToCSV, exportToPDF } from "./exportUtils";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import cmoAvatar from "../../assets/cmo_avatar.jpg";
@@ -26,88 +25,200 @@ interface AdminDashboardPageProps {
   onBackToPatientForm: () => void;
 }
 
-type MenuTab =
-  | "dashboard"
-  | "list"
-  | "profile"
-  | "result"
-  | "exception"
-  | "account";
+type MainNavTab = "dashboard" | "feedbacks" | "reports";
+type DashboardSubTab = "overview" | "analysis";
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   onBackToPatientForm,
 }) => {
   const dispatch = useDispatch();
-  const adminEmail = useSelector((state: RootState) => state.admin.adminEmail);
+  const records = useSelector((state: RootState) => state.admin.records);
   const searchQuery = useSelector(
     (state: RootState) => state.admin.searchQuery,
   );
   const ratingFilter = useSelector(
     (state: RootState) => state.admin.ratingFilter,
   );
-  const mediaFilter = useSelector(
-    (state: RootState) => state.admin.mediaFilter,
-  );
   const statusFilter = useSelector(
     (state: RootState) => state.admin.statusFilter,
   );
-  const records = useSelector((state: RootState) => state.admin.records);
+  const mediaFilter = useSelector(
+    (state: RootState) => state.admin.mediaFilter,
+  );
 
-  // Local navigation & responsive states
-  const [activeMenu, setActiveMenu] = useState<MenuTab>("dashboard");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showHelpDropdown, setShowHelpDropdown] = useState(false);
+  // Navigation state
+  const [activeTab, setActiveTab] = useState<MainNavTab>("dashboard");
+  const [dashSubTab, setDashSubTab] = useState<DashboardSubTab>("overview");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Filtered dataset
+  // Grievance Toggle State
+  const [showGrievancesOnly, setShowGrievancesOnly] = useState<boolean>(false);
+
+  // Filters State
+  const [selectedYear, setSelectedYear] = useState<string>("ALL");
+  const [selectedMonth, setSelectedMonth] = useState<string>("ALL");
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedClinic, setSelectedClinic] = useState<string>("ALL");
+  const [selectedStationHq, setSelectedStationHq] = useState<string>("ALL");
+  const [selectedResponseType, setSelectedResponseType] =
+    useState<string>("ALL");
+
+  // Notifications & Toast State
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Pagination for Feedbacks Table
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Toggle Grievance Filter button handler
+  const handleToggleGrievances = () => {
+    if (showGrievancesOnly) {
+      setShowGrievancesOnly(false);
+      setSelectedResponseType("ALL");
+      showToast("Showing All Feedbacks");
+    } else {
+      setShowGrievancesOnly(true);
+      setSelectedResponseType("Could Be Better");
+      showToast("Showing Grievances Only");
+    }
+  };
+
+  // Filter Logic
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
-      // Search query filter
+      // Search
       const matchesSearch =
         !searchQuery ||
         r.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.trackingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.mobileNumber.includes(searchQuery) ||
-        r.facilityName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.aadhaarMasked.includes(searchQuery);
+        (r.clinicName &&
+          r.clinicName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (r.facilityName &&
+          r.facilityName.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      // Rating filter
-      const matchesRating =
-        ratingFilter === "ALL" || r.overallRating === ratingFilter;
+      // Year
+      const matchesYear = selectedYear === "ALL" || r.year === selectedYear;
 
-      // Status filter
+      // Month
+      const matchesMonth = selectedMonth === "ALL" || r.month === selectedMonth;
+
+      // Date Exact
+      const matchesDate =
+        !selectedDate || (r.date && r.date.includes(selectedDate));
+
+      // Clinic Name
+      const matchesClinic =
+        selectedClinic === "ALL" ||
+        (r.clinicName && r.clinicName === selectedClinic) ||
+        (r.facilityName && r.facilityName.includes(selectedClinic));
+
+      // Station HQ
+      const matchesStation =
+        selectedStationHq === "ALL" || r.stationHq === selectedStationHq;
+
+      // Response Type / Overall Rating
+      const ratingVal = String(r.responseType || r.overallRating);
+      const matchesResponse =
+        selectedResponseType === "ALL" ||
+        ratingVal === selectedResponseType ||
+        (selectedResponseType === "Could Be Better" &&
+          (ratingVal === "Could Be Better" || r.isGrievance)) ||
+        (selectedResponseType === "Excellent Service" &&
+          (ratingVal === "Excellent Service" || ratingVal === "Excellent")) ||
+        (selectedResponseType === "Acceptable standard" &&
+          (ratingVal === "Acceptable standard" || ratingVal === "Acceptable"));
+
+      // Status
       const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
 
-      // Media filter
+      // Media
       let matchesMedia = true;
-      const hasAudio =
-        !!r.registration.audioUrl ||
-        !!r.doctor.audioUrl ||
-        !!r.pharmacy.audioUrl ||
-        !!r.cleanliness.audioUrl ||
-        !!r.suggestions.audioUrl;
-      const hasImage =
-        !!r.registration.imageUrl ||
-        !!r.doctor.imageUrl ||
-        !!r.pharmacy.imageUrl ||
-        !!r.cleanliness.imageUrl ||
-        !!r.suggestions.imageUrl;
+      const hasAudio = !!(
+        r.registration?.audioUrl ||
+        r.doctor?.audioUrl ||
+        r.pharmacy?.audioUrl ||
+        r.cleanliness?.audioUrl ||
+        r.suggestions?.audioUrl
+      );
+      const hasImage = !!(
+        r.registration?.imageUrl ||
+        r.doctor?.imageUrl ||
+        r.pharmacy?.imageUrl ||
+        r.cleanliness?.imageUrl ||
+        r.suggestions?.imageUrl
+      );
 
       if (mediaFilter === "AUDIO") matchesMedia = hasAudio;
       if (mediaFilter === "IMAGE") matchesMedia = hasImage;
       if (mediaFilter === "BOTH") matchesMedia = hasAudio && hasImage;
 
-      return matchesSearch && matchesRating && matchesStatus && matchesMedia;
+      return (
+        matchesSearch &&
+        matchesYear &&
+        matchesMonth &&
+        matchesDate &&
+        matchesClinic &&
+        matchesStation &&
+        matchesResponse &&
+        matchesStatus &&
+        matchesMedia
+      );
     });
-  }, [records, searchQuery, ratingFilter, statusFilter, mediaFilter]);
+  }, [
+    records,
+    searchQuery,
+    selectedYear,
+    selectedMonth,
+    selectedDate,
+    selectedClinic,
+    selectedStationHq,
+    selectedResponseType,
+    statusFilter,
+    mediaFilter,
+  ]);
 
-  // Filtering for exceptions/grievances specifically
-  const grievanceRecords = useMemo(() => {
-    return records.filter(
-      (r) => r.isGrievance || r.overallRating === "Could Be Better",
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage) || 1;
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredRecords.slice(start, start + itemsPerPage);
+  }, [filteredRecords, currentPage]);
+
+  const resetFilters = () => {
+    setSelectedYear("ALL");
+    setSelectedMonth("ALL");
+    setSelectedDate("");
+    setSelectedClinic("ALL");
+    setSelectedStationHq("ALL");
+    setSelectedResponseType("ALL");
+    setShowGrievancesOnly(false);
+    dispatch(setSearchQuery(""));
+    dispatch(setRatingFilter("ALL"));
+    dispatch(setStatusFilter("ALL"));
+    dispatch(setMediaFilter("ALL"));
+    setCurrentPage(1);
+    showToast("Filters reset successfully");
+  };
+
+  const handleEscalateCMO = (recordId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch(
+      updateRecordStatus({
+        id: recordId,
+        status: "Assigned to CMO",
+        note: "Escalated by CMO Rajkot to CMO for priority review",
+        officerName: "CMO Rajkot",
+      }),
     );
-  }, [records]);
+    showToast("Escalated to CMO successfully!");
+  };
 
   const handleLogout = () => {
     dispatch(logoutAdmin());
@@ -116,1338 +227,795 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
     }
   };
 
-  const handleExitAdmin = () => {
-    dispatch(closeAdminModal());
-    onBackToPatientForm();
-  };
-
-  // Analytics Metrics computation
-  const totalCount = records.length;
-  const grievanceCount = grievanceRecords.length;
-  const resolvedCount = records.filter((r) => r.status === "Resolved").length;
-  const audioNotesCount = records.filter(
-    (r) =>
-      r.registration.audioUrl ||
-      r.doctor.audioUrl ||
-      r.pharmacy.audioUrl ||
-      r.cleanliness.audioUrl ||
-      r.suggestions.audioUrl,
-  ).length;
-  const imagesCount = records.filter(
-    (r) =>
-      r.registration.imageUrl ||
-      r.doctor.imageUrl ||
-      r.pharmacy.imageUrl ||
-      r.cleanliness.imageUrl ||
-      r.suggestions.imageUrl,
-  ).length;
-
-  const activeGrievanceRate =
-    totalCount > 0 ? Math.round((grievanceCount / totalCount) * 100) : 0;
-  const slaResolutionRate =
-    totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 0;
-
-  // Sidebar Menu Config
-  const sidebarItems: Array<{ key: string; label: string; icon: string; action?: () => void }> = [
-    { key: "dashboard", label: "Dashboard", icon: "ph:grid-four-bold" },
-    { key: "list", label: "List", icon: "ph:list-bullets-bold" },
-    { key: "result", label: "Result", icon: "ph:check-circle-bold" },
-    { key: "exception", label: "Exception", icon: "ph:warning-bold" },
-    { key: "account", label: "Account", icon: "ph:gear-six-bold" },
-    // {
-    //   key: "form",
-    //   label: "Form",
-    //   icon: "ph:note-pencil-bold",
-    //   action: handleExitAdmin,
-    // },
-    // { key: "profile", label: "Profile", icon: "ph:user-circle-bold" },
-  ];
-
   return (
-    <div className="min-h-screen w-full bg-[#F0F2F5] text-slate-800 flex font-sans selection:bg-blue-500 selection:text-white relative overflow-hidden">
-      {/* ------------------------------------------------------------- */}
-      {/* MOBILE DRAWER DRAWER SIDEBAR & OVERLAY */}
-      {/* ------------------------------------------------------------- */}
-      <AnimatePresence>
-        {mobileSidebarOpen && (
-          <>
-            {/* Background Overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileSidebarOpen(false)}
-              className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
-            />
-            {/* Slide-in sidebar container */}
-            <motion.aside
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 bottom-0 z-50 w-64 bg-[#001529] text-white flex flex-col p-5 shadow-2xl lg:hidden"
+    <div className="min-h-screen w-full bg-[#0A0F1D] text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 flex flex-col relative overflow-x-hidden">
+      {/* ------------------------------------------------------------------- */}
+      {/* STREAMLINED CLEAN & EASY TOP HEADER BAR */}
+      {/* ------------------------------------------------------------------- */}
+      <header className="sticky top-0 z-40 bg-[#0F172A]/95 backdrop-blur-md border-b border-slate-800 px-6 py-3 flex items-center justify-between shadow-lg h-16">
+        {/* Left: Brand Emblem & Title */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-amber-500 border border-[#1b357b7e] rounded-full text-[#0A0F1D] flex items-center justify-center shrink-0 shadow-sm">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              className="w-6 h-6"
             >
-              {/* Brand Logo Header */}
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-5 mb-5 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className=" rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                    <div className="w-10 h-10 border border-white rounded-full text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        className="w-6 h-6"
-                      >
-                        <path d="M0 0h24v24H0z" fill="none" />
-                        <g
-                          fill="none"
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="1.5"
-                        >
-                          <path d="M9.349 3.434a2.684 2.684 0 1 0 5.368 0a2.684 2.684 0 0 0-5.368 0m5.881 9.191a1.888 1.888 0 0 1 1.807 2.523m-5.004-9.03V23.25" />
-                          <path d="M14.494 4.5h7.889c2.677 0-1.2 6.453-6.772 4.3M9.569 4.5H1.682c-2.676 0 1.2 6.453 6.772 4.3m.381 3.825A1.9 1.9 0 0 0 6.916 14.5a1.975 1.975 0 0 0 1.919 1.964h5.116a1.92 1.92 0 0 1 0 3.838h-3.517a1.64 1.64 0 0 0-1.6 1.675a1.7 1.7 0 0 0 .531 1.247" />
-                        </g>
-                      </svg>
-                    </div>
-                  </div>
-                  <span className="text-base tracking-wider font-medium">
-                    Arogya Mandir
-                  </span>
-                </div>
-                <button
-                  onClick={() => setMobileSidebarOpen(false)}
-                  className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/65 text-slate-400 hover:text-white transition cursor-pointer"
-                >
-                  <Icon icon="ph:x-bold" className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Navigation Menu */}
-              <nav className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar">
-                {sidebarItems.map((item) => {
-                  const isActive = activeMenu === item.key;
-                  return (
-                    <button
-                      key={item.key}
-                      onClick={() => {
-                        setMobileSidebarOpen(false);
-                        if (item.action) {
-                          item.action();
-                        } else {
-                          setActiveMenu(item.key as MenuTab);
-                        }
-                      }}
-                      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                        isActive
-                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
-                          : "text-slate-400 hover:bg-slate-850 hover:text-slate-200"
-                      }`}
-                    >
-                      <Icon icon={item.icon} className="w-5 h-5 shrink-0" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-
-              {/* Mobile Footer Logged-in admin and exit */}
-              <div className="border-t border-slate-800/85 pt-4 mt-4 shrink-0 space-y-3.5 text-xs text-slate-400">
-                <div className="flex items-center gap-2.5 px-2">
-                  <img
-                    src={cmoAvatar}
-                    alt="CMO Avatar"
-                    className="w-8 h-8 rounded-full object-cover border border-slate-700"
-                  />
-                  <div className="truncate">
-                    <div className="font-extrabold text-slate-250 text-[11px] leading-tight">
-                      John Varma
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      cmo@arogyamandir.in
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full py-2.5 rounded-lg border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400 font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
-                  <span>Logout Node</span>
-                </button>
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* ------------------------------------------------------------- */}
-      {/* DESKTOP SIDEBAR PANEL */}
-      {/* ------------------------------------------------------------- */}
-      <aside
-        className={`hidden lg:flex flex-col bg-[#001529] text-white p-5 border-r border-slate-800/50 shadow-xl shrink-0 transition-all duration-300 ${
-          sidebarCollapsed ? "w-20" : "w-64"
-        }`}
-      >
-        {/* Brand Header */}
-        <div className="flex items-center gap-3 border-b border-slate-800/80 pb-5 mb-5 shrink-0">
-          <div className=" rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-            <div className="w-10 h-10 border border-white rounded-full text-white flex items-center justify-center shrink-0 shadow-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                className="w-6 h-6"
+              <path d="M0 0h24v24H0z" fill="none" />
+              <g
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.5"
               >
-                <path d="M0 0h24v24H0z" fill="none" />
-                <g
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.5"
-                >
-                  <path d="M9.349 3.434a2.684 2.684 0 1 0 5.368 0a2.684 2.684 0 0 0-5.368 0m5.881 9.191a1.888 1.888 0 0 1 1.807 2.523m-5.004-9.03V23.25" />
-                  <path d="M14.494 4.5h7.889c2.677 0-1.2 6.453-6.772 4.3M9.569 4.5H1.682c-2.676 0 1.2 6.453 6.772 4.3m.381 3.825A1.9 1.9 0 0 0 6.916 14.5a1.975 1.975 0 0 0 1.919 1.964h5.116a1.92 1.92 0 0 1 0 3.838h-3.517a1.64 1.64 0 0 0-1.6 1.675a1.7 1.7 0 0 0 .531 1.247" />
-                </g>
-              </svg>
-            </div>
+                <path d="M9.349 3.434a2.684 2.684 0 1 0 5.368 0a2.684 2.684 0 0 0-5.368 0m5.881 9.191a1.888 1.888 0 0 1 1.807 2.523m-5.004-9.03V23.25" />
+                <path d="M14.494 4.5h7.889c2.677 0-1.2 6.453-6.772 4.3M9.569 4.5H1.682c-2.676 0 1.2 6.453 6.772 4.3m.381 3.825A1.9 1.9 0 0 0 6.916 14.5a1.975 1.975 0 0 0 1.919 1.964h5.116a1.92 1.92 0 0 1 0 3.838h-3.517a1.64 1.64 0 0 0-1.6 1.675a1.7 1.7 0 0 0 .531 1.247" />
+              </g>
+            </svg>
           </div>
-          {!sidebarCollapsed && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-lg  font-medium"
-            >
+          <div className="flex items-center gap-2">
+            <span className="text-base font-bold text-white tracking-tight">
               Arogya Mandir
-            </motion.span>
-          )}
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 text-[11px] font-semibold border border-slate-700">
+              Dashboard
+            </span>
+          </div>
         </div>
 
-        {/* Sidebar Navigation */}
-        <nav className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar">
-          {sidebarItems.map((item) => {
-            const isActive = activeMenu === item.key;
+        {/* Center: Primary Navigation Tabs */}
+        <nav className="hidden md:flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+          {[
+            { id: "dashboard", label: "Dashboard", icon: "ant-design:dashboard-outlined" },
+            {
+              id: "feedbacks",
+              label: "Feedbacks",
+              icon: "fluent:person-feedback-48-regular",
+            },
+            {
+              id: "reports",
+              label: "Reports & Export",
+              icon: "oui:nav-reports",
+            },
+          ].map((nav) => {
+            const isActive = activeTab === nav.id;
             return (
               <button
-                key={item.key}
-                onClick={() => {
-                  if (item.action) {
-                    item.action();
-                  } else {
-                    setActiveMenu(item.key as MenuTab);
-                  }
-                }}
-                className={`w-full flex items-center rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
-                  sidebarCollapsed
-                    ? "justify-center p-3.5"
-                    : "gap-3.5 px-4 py-3.5"
-                } ${
+                key={nav.id}
+                onClick={() => setActiveTab(nav.id as MainNavTab)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-2 relative ${
                   isActive
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
-                    : "text-slate-400 hover:bg-slate-850 hover:text-slate-250"
+                    ? "text-amber-400 font-bold bg-slate-800/90 shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
                 }`}
-                title={sidebarCollapsed ? item.label : undefined}
               >
-                <Icon icon={item.icon} className="w-5 h-5 shrink-0" />
-                {!sidebarCollapsed && <span>{item.label}</span>}
+                <Icon icon={nav.icon} className="w-4 h-4" />
+                <span>{nav.label}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* Desktop Sidebar Footer */}
-        <div className="border-t border-slate-800/85 pt-4 mt-4 shrink-0 space-y-3">
-          <div
-            className={`flex items-center gap-2.5 ${sidebarCollapsed ? "justify-center" : "px-1"}`}
-          >
+        {/* Right: Clean User Pill & Quick Actions */}
+        <div className="flex items-center gap-3">
+          {/* User Profile Pill */}
+          <div className="hidden sm:flex items-center gap-2.5 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1">
             <img
               src={cmoAvatar}
-              alt="CMO Avatar"
-              className="w-8 h-8 rounded-full object-cover border border-slate-700 shrink-0"
+              alt="Profile"
+              className="w-7 h-7 rounded-full object-cover border border-amber-500/50"
             />
-            {!sidebarCollapsed && (
-              <div className="truncate">
-                <div className="font-extrabold text-slate-200 text-[11px] leading-tight">
-                  John Varma
+            <span className="text-xs font-semibold text-slate-200">
+              CMO Rajkot
+            </span>
+          </div>
+
+          {/* Export Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+            >
+              <Icon icon="ph:download-simple-bold" className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+
+            {showExportMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowExportMenu(false)}
+                />
+                <div className="absolute right-0 mt-2 w-44 bg-[#111827] border border-slate-800 rounded-xl shadow-xl p-1.5 z-20 space-y-1 text-xs font-semibold">
+                  <button
+                    onClick={() => {
+                      exportToCSV(filteredRecords);
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-slate-800 rounded-lg text-emerald-400 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Icon icon="ph:file-xls-bold" className="w-4 h-4" />
+                    <span>Download CSV</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      exportToPDF(filteredRecords);
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-slate-800 rounded-lg text-red-400 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Icon icon="ph:file-pdf-bold" className="w-4 h-4" />
+                    <span>Download PDF</span>
+                  </button>
                 </div>
-                <div className="text-[9px] text-slate-500">
-                  cmo@arogyamandir.in
+              </>
+            )}
+          </div>
+
+          {/* Switch to Patient Form */}
+          <button
+            onClick={onBackToPatientForm}
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+            title="Patient Feedback Form"
+          >
+            <Icon icon="ph:arrow-square-out-bold" className="w-4 h-4" />
+          </button>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition cursor-pointer"
+            title="Logout"
+          >
+            <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
+          </button>
+
+          {/* Mobile Nav Toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 rounded-xl bg-slate-800 text-slate-300 md:hidden cursor-pointer"
+          >
+            <Icon
+              icon={mobileMenuOpen ? "ph:x-bold" : "ph:list-bold"}
+              className="w-5 h-5"
+            />
+          </button>
+        </div>
+      </header>
+
+      {/* MOBILE MENU NAV DRAWER */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-[#0F172A] border-b border-slate-800 p-3 space-y-1 md:hidden z-30"
+          >
+            {[
+              {
+                id: "dashboard",
+                label: "Dashboard",
+                icon: "ph:grid-four-bold",
+              },
+              {
+                id: "feedbacks",
+                label: "Feedbacks",
+                icon: "ph:list-bullets-bold",
+              },
+              {
+                id: "reports",
+                label: "Reports & Export",
+                icon: "ph:file-text-bold",
+              },
+            ].map((nav) => (
+              <button
+                key={nav.id}
+                onClick={() => {
+                  setActiveTab(nav.id as MainNavTab);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 transition ${
+                  activeTab === nav.id
+                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold"
+                    : "text-slate-300 hover:bg-slate-800"
+                }`}
+              >
+                <Icon icon={nav.icon} className="w-4 h-4" />
+                <span>{nav.label}</span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TOAST NOTIFICATION */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-18 right-6 z-50 bg-amber-500 text-slate-950 px-4 py-2 rounded-xl shadow-xl font-bold text-xs flex items-center gap-2"
+          >
+            <Icon icon="ph:check-circle-fill" className="w-4 h-4" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ------------------------------------------------------------------- */}
+      {/* FILTER TOOLBAR - ONLY DISPLAYED ON FEEDBACKS TAB PAGE */}
+      {/* ------------------------------------------------------------------- */}
+      {activeTab === "feedbacks" && (
+        <div className="bg-[#0F172A]/80 border-b border-slate-800/80 px-6 py-3 z-20">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+            {/* Search Input */}
+            <div className="relative w-full md:w-72 shrink-0">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => dispatch(setSearchQuery(e.target.value))}
+                placeholder="Search patient, mobile, clinic..."
+                className="w-full bg-[#111827] border border-slate-700/70 rounded-xl py-2 pl-9 pr-7 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 transition"
+              />
+              <Icon
+                icon="ph:magnifying-glass-bold"
+                className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => dispatch(setSearchQuery(""))}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  <Icon icon="ph:x-bold" className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Clean Dropdown Filter Group */}
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-[#111827] border border-slate-700/70 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+              >
+                <option value="ALL">All Years</option>
+                <option value="2026">2026</option>
+                <option value="2025">2025</option>
+              </select>
+
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-[#111827] border border-slate-700/70 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+              >
+                <option value="ALL">All Months</option>
+                <option value="Aug">August</option>
+                <option value="Jul">July</option>
+                <option value="Jun">June</option>
+              </select>
+
+              <select
+                value={selectedClinic}
+                onChange={(e) => setSelectedClinic(e.target.value)}
+                className="bg-[#111827] border border-slate-700/70 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+              >
+                <option value="ALL">All Feedbacks</option>
+                <option value="Rajkot">Rajkot</option>
+                <option value="Jamnagar">Jamnagar</option>
+                <option value="Dwarka">Dwarka</option>
+                <option value="Delhi Cantt">Delhi Cantt</option>
+                <option value="Rohini">Rohini</option>
+              </select>
+
+              <select
+                value={selectedResponseType}
+                onChange={(e) => {
+                  setSelectedResponseType(e.target.value);
+                  if (e.target.value === "Could Be Better")
+                    setShowGrievancesOnly(true);
+                  else setShowGrievancesOnly(false);
+                }}
+                className="bg-[#111827] border border-slate-700/70 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+              >
+                <option value="ALL">All Ratings</option>
+                <option value="Excellent Service">Excellent Service</option>
+                <option value="Acceptable standard">Acceptable Standard</option>
+                <option value="Could Be Better">Could Be Better</option>
+              </select>
+
+              <button
+                onClick={resetFilters}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+              >
+                <Icon icon="ph:arrow-clockwise-bold" className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------- */}
+      {/* MAIN DISPLAY PORT BODY */}
+      {/* ------------------------------------------------------------------- */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+        {/* =================================================================== */}
+        {/* TAB 1: DASHBOARD OVERVIEW */}
+        {/* =================================================================== */}
+        {activeTab === "dashboard" && (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            {/* CLEAN PAGE HEADER & SUB TABS */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Executive Analytics Overview
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Real-time patient satisfaction telemetry and Feedback response
+                  metrics
+                </p>
+              </div>
+
+              {/* Overview vs Analysis Toggle */}
+              <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
+                <button
+                  onClick={() => setDashSubTab("overview")}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    dashSubTab === "overview"
+                      ? "bg-amber-500 text-slate-950 shadow-sm"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Executive Overview
+                </button>
+                <button
+                  onClick={() => setDashSubTab("analysis")}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    dashSubTab === "analysis"
+                      ? "bg-amber-500 text-slate-950 shadow-sm"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Analysis
+                </button>
+              </div>
+            </div>
+
+            {/* DASHBOARD CHARTS CONTENT */}
+            {dashSubTab === "overview" ? (
+              <AdminCharts filteredRecords={filteredRecords} />
+            ) : (
+              <div className="space-y-6">
+                {/* 3 Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        Total Submissions
+                      </div>
+                      <div className="text-3xl font-bold text-white mt-1">
+                        {filteredRecords.length || 394}
+                      </div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Icon icon="ph:clipboard-text-bold" className="w-6 h-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        Grievances Detected
+                      </div>
+                      <div className="text-3xl font-bold text-red-400 mt-1">
+                        {
+                          filteredRecords.filter(
+                            (r) =>
+                              String(r.responseType || r.overallRating) ===
+                                "Could Be Better" || r.isGrievance,
+                          ).length
+                        }
+                      </div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
+                      <Icon icon="ph:warning-circle-bold" className="w-6 h-6" />
+                    </div>
+                  </div>
+
+                  <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        SLA Resolution Rate
+                      </div>
+                      <div className="text-3xl font-bold text-emerald-400 mt-1">
+                        {filteredRecords.length > 0
+                          ? Math.round(
+                              (filteredRecords.filter(
+                                (r) => r.status === "Resolved",
+                              ).length /
+                                filteredRecords.length) *
+                                100,
+                            )
+                          : 88}
+                        %
+                      </div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <Icon icon="ph:shield-check-bold" className="w-6 h-6" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <WeekOnWeekAreaChart />
+                  <MonthOnMonthScoreChart filteredRecords={filteredRecords} />
                 </div>
               </div>
             )}
-          </div>
-          {!sidebarCollapsed ? (
-            <button
-              onClick={handleLogout}
-              className="w-full py-2.5 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
-              <span>Log Out</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleLogout}
-              className="w-full py-2 rounded-xl text-red-400 hover:bg-red-500/10 transition cursor-pointer flex justify-center"
-              title="Log Out"
-            >
-              <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </aside>
+          </motion.div>
+        )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* MAIN CONTAINER LAYOUT */}
-      {/* ------------------------------------------------------------- */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative">
-        {/* TOP HEADER BAR */}
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-20">
-          <div className="flex items-center gap-4">
-            {/* Hamburger Toggle menu */}
-            <button
-              onClick={() => {
-                setMobileSidebarOpen(true);
-                setSidebarCollapsed(!sidebarCollapsed);
-              }}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer flex items-center justify-center"
-            >
-              <Icon icon="ph:list-bold" className="w-5 h-5" />
-            </button>
+        {/* =================================================================== */}
+        {/* TAB 2: FEEDBACKS MANAGEMENT TAB */}
+        {/* =================================================================== */}
+        {activeTab === "feedbacks" && (
+          <motion.div
+            key="feedbacks"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            {/* Header Title with Dynamic Toggle Button */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Patient Feedback Records
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Detailed listing of patient ratings, clinic responses and
+                  grievance actions
+                </p>
+              </div>
 
-            {/* Path/Breadcrumbs */}
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 font-semibold select-none">
-              <span>Admin</span>
-              <Icon icon="ph:caret-right-bold" className="w-3 h-3" />
-              <span className="text-slate-700 font-bold capitalize">
-                {activeMenu}
-              </span>
-            </div>
-          </div>
-
-          {/* Right Header Navigation Panel */}
-          <div className="flex items-center gap-4">
-            {/* Search Trigger icon */}
-            <button
-              onClick={() => setActiveMenu("list")}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer flex items-center justify-center"
-              title="Global Search"
-            >
-              <Icon icon="ph:magnifying-glass-bold" className="w-4.5 h-4.5" />
-            </button>
-
-            {/* Help Dropdown Option */}
-            <div className="relative">
+              {/* Dynamic Toggle Button: Show Grievances Only <-> Show All Feedbacks */}
               <button
-                onClick={() => {
-                  setShowHelpDropdown(!showHelpDropdown);
-                  setShowNotifications(false);
-                }}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer flex items-center justify-center"
-                title="Documentation & Guides"
+                onClick={handleToggleGrievances}
+                className={`px-4 py-2 rounded-xl border font-bold text-xs transition cursor-pointer flex items-center gap-2 shadow-sm ${
+                  showGrievancesOnly
+                    ? "bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400"
+                    : "border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                }`}
               >
-                <Icon icon="ph:question-bold" className="w-4.5 h-4.5" />
+                <Icon
+                  icon={
+                    showGrievancesOnly
+                      ? "ph:list-bullets-bold"
+                      : "ph:warning-circle-bold"
+                  }
+                  className="w-4 h-4"
+                />
+                <span>
+                  {showGrievancesOnly
+                    ? "Show All Feedbacks"
+                    : "Show Grievances Only"}
+                </span>
               </button>
-              {showHelpDropdown && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={() => setShowHelpDropdown(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 z-30 flex flex-col gap-1 text-[11px] font-bold text-slate-650">
-                    <div className="px-2.5 py-1.5 border-b border-slate-100 font-black text-slate-900 text-xs">
-                      Help & Guides
-                    </div>
-                    <button className="px-2.5 py-2 hover:bg-slate-50 rounded-lg text-left flex items-center gap-2 transition cursor-pointer">
-                      <Icon
-                        icon="ph:book-open-bold"
-                        className="w-4 h-4 text-blue-500"
-                      />{" "}
-                      Standard Operations SOP
-                    </button>
-                    <button className="px-2.5 py-2 hover:bg-slate-50 rounded-lg text-left flex items-center gap-2 transition cursor-pointer">
-                      <Icon
-                        icon="ph:shield-warning-bold"
-                        className="w-4 h-4 text-amber-500"
-                      />{" "}
-                      Escalation Matrices
-                    </button>
-                  </div>
-                </>
-              )}
             </div>
 
-            {/* Notifications Alert Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowNotifications(!showNotifications);
-                  setShowHelpDropdown(false);
-                }}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer flex items-center justify-center relative"
-                title="Telemetry Alerts"
-              >
-                <Icon icon="ph:bell-bold" className="w-4.5 h-4.5" />
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
-              </button>
-              {showNotifications && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={() => setShowNotifications(false)}
-                  />
-                  <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl p-3.5 z-30 flex flex-col gap-2.5">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-1 shrink-0">
-                      <span className="text-xs font-black text-slate-900 uppercase">
-                        Alert Logs
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-750 text-[10px] font-bold">
-                        1 New Alert
-                      </span>
-                    </div>
-                    <div className="text-[11px] font-medium text-slate-600 space-y-2 max-h-48 overflow-y-auto no-scrollbar">
-                      <div className="p-2 bg-red-50/70 border border-red-100 rounded-xl space-y-1">
-                        <div className="font-bold text-red-900 flex items-center gap-1">
-                          <Icon
-                            icon="ph:warning-circle-fill"
-                            className="w-3.5 h-3.5 text-red-600"
-                          />
-                          Grievance Escalation
-                        </div>
-                        <p className="leading-tight text-slate-650">
-                          Grievance AM-FB-2026-98124 requires urgent medicine
-                          restocking audit.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div className="h-6 w-[1px] bg-slate-200" />
-
-            {/* Profile Avatar John */}
-            <div className="flex items-center gap-2 select-none">
-              <img
-                src={cmoAvatar}
-                alt="CMO Avatar"
-                className="w-8.5 h-8.5 rounded-full object-cover border border-slate-200"
-              />
-              <span className="hidden sm:inline text-xs font-bold text-slate-750 font-sans">
-                John
-              </span>
-            </div>
-          </div>
-        </header>
-
-        {/* MAIN DISPLAY PORT BODY */}
-        <main className="flex-1 overflow-y-auto p-6 bg-[#F0F2F5] space-y-6">
-          <AnimatePresence mode="wait">
-            {/* ------------------------------------------------------------- */}
-            {/* TAB: DASHBOARD / ANALYTICS */}
-            {/* ------------------------------------------------------------- */}
-            {activeMenu === "dashboard" && (
-              <motion.div
-                key="dashboard"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                {/* 1. TOP CARDS GRID LAYOUT */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {/* Card 1: Total Feedbacks */}
-                  <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-300 flex flex-col justify-between h-[190px]">
-                    <div
-                      className="flex items-center justify-between text-xs font-bold text-slate-400"
-                      title="Total patient submissions"
-                    >
-                      <span>Total Sales (Feedbacks)</span>
-                      <Icon
-                        icon="ph:info-bold"
-                        className="w-4 h-4 text-slate-350 cursor-pointer hover:text-slate-500"
-                      />
-                    </div>
-                    <div className="mt-2.5">
-                      <div className="text-3xl font-black text-slate-900 tracking-tight leading-none font-mono">
-                        {totalCount.toLocaleString()}
-                      </div>
-                      {/* Ratios block like image */}
-                      <div className="flex items-center gap-4 text-[10px] font-bold text-slate-500 mt-2.5">
-                        <span className="flex items-center gap-1">
-                          Week ratio{" "}
-                          <span className="font-extrabold text-emerald-600 flex items-center">
-                            13%{" "}
-                            <Icon
-                              icon="ph:caret-up-fill"
-                              className="w-2.5 h-2.5 ml-0.5"
-                            />
-                          </span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          Day ratio{" "}
-                          <span className="font-extrabold text-red-500 flex items-center">
-                            10%{" "}
-                            <Icon
-                              icon="ph:caret-down-fill"
-                              className="w-2.5 h-2.5 ml-0.5"
-                            />
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="border-t border-slate-100 pt-2.5 mt-2.5 flex items-center justify-between text-[11px] font-bold text-slate-500 font-mono select-none">
-                      <span>Day Sales (Daily Submissions)</span>
-                      <span className="text-slate-800 font-extrabold">154</span>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Visits (Area Sparkline) */}
-                  <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-300 flex flex-col justify-between h-[190px]">
-                    <div
-                      className="flex items-center justify-between text-xs font-bold text-slate-400"
-                      title="Patient OPD visits telemetry"
-                    >
-                      <span>Visits (Patient Traffic)</span>
-                      <Icon
-                        icon="ph:info-bold"
-                        className="w-4 h-4 text-slate-350 cursor-pointer hover:text-slate-500"
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col justify-end mt-1">
-                      <div className="text-2xl font-black text-slate-900 tracking-tight leading-none font-mono mb-1.5">
-                        6,480
-                      </div>
-                      <VisitsSparkline />
-                    </div>
-                    <div className="border-t border-slate-100 pt-2 mt-2 flex items-center justify-between text-[11px] font-bold text-slate-500 font-mono select-none">
-                      <span>Day visits</span>
-                      <span className="text-slate-800 font-extrabold">
-                        4,280
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Payments (Vertical Column Sparkline) */}
-                  <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-300 flex flex-col justify-between h-[190px]">
-                    <div
-                      className="flex items-center justify-between text-xs font-bold text-slate-400"
-                      title="Audited case statistics"
-                    >
-                      <span>Payments (Active Audits)</span>
-                      <Icon
-                        icon="ph:info-bold"
-                        className="w-4 h-4 text-slate-350 cursor-pointer hover:text-slate-500"
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col justify-end mt-1">
-                      <div className="text-2xl font-black text-slate-900 tracking-tight leading-none font-mono mb-1.5">
-                        5,320
-                      </div>
-                      <PaymentsSparkline />
-                    </div>
-                    <div className="border-t border-slate-100 pt-2 mt-2 flex items-center justify-between text-[11px] font-bold text-slate-500 font-mono select-none">
-                      <span>Conversion rate</span>
-                      <span className="text-slate-800 font-extrabold">50%</span>
-                    </div>
-                  </div>
-
-                  {/* Card 4: Operation Effect (Donut Ring Chart) */}
-                  <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-300 flex items-center justify-between h-[190px]">
-                    <div className="flex flex-col justify-between h-full flex-1">
-                      <div className="text-xs font-bold text-slate-400">
-                        Operation Effect
-                      </div>
-                      <div className="mb-2">
-                        <div className="text-3xl font-black text-slate-900 font-mono leading-tight">
-                          {slaResolutionRate}%
-                        </div>
-                        <div className="text-[10px] font-bold text-emerald-600 mt-1 leading-normal">
-                          SLA Compliance target achieved
-                        </div>
-                      </div>
-                    </div>
-                    <OperationEffectRing percentage={slaResolutionRate} />
-                  </div>
-                </div>
-
-                {/* 2. MAIN CHARTS RENDERING */}
-                <AdminCharts />
-              </motion.div>
-            )}
-
-            {/* ------------------------------------------------------------- */}
-            {/* TAB: LIST (ALL PATIENT FEEDBACKS) */}
-            {/* ------------------------------------------------------------- */}
-            {activeMenu === "list" && (
-              <motion.div
-                key="list"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                {/* SEARCH & FILTERS TOOLBAR */}
-                <div className="bg-white text-slate-900 rounded-3xl p-5 shadow-sm border border-slate-200 space-y-4">
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                    {/* Search Field */}
-                    <div className="relative w-full md:w-96 shrink-0">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) =>
-                          dispatch(setSearchQuery(e.target.value))
-                        }
-                        placeholder="Search Patient Name, Mobile, Tracking ID, Facility..."
-                        className="w-full bg-slate-50 border border-slate-300 rounded-2xl py-3 pl-10 pr-4 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all"
-                      />
-                      <Icon
-                        icon="ph:magnifying-glass-bold"
-                        className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"
-                      />
-                      {searchQuery && (
-                        <button
-                          onClick={() => dispatch(setSearchQuery(""))}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                        >
-                          <Icon icon="ph:x-bold" className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Filters dropdowns group */}
-                    <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-                      <select
-                        value={ratingFilter}
-                        onChange={(e) =>
-                          dispatch(setRatingFilter(e.target.value as any))
-                        }
-                        className="bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                      >
-                        <option value="ALL">All Ratings</option>
-                        <option value="Could Be Better">Could Be Better</option>
-                        <option value="Acceptable">Acceptable</option>
-                        <option value="Excellent">Excellent</option>
-                      </select>
-
-                      <select
-                        value={mediaFilter}
-                        onChange={(e) =>
-                          dispatch(setMediaFilter(e.target.value as any))
-                        }
-                        className="bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                      >
-                        <option value="ALL">All Media Attachments</option>
-                        <option value="AUDIO">🎙️ Has Voice Recording</option>
-                        <option value="IMAGE">📷 Has Photo Evidence</option>
-                        <option value="BOTH">🎙️+📷 Audio & Photo Both</option>
-                      </select>
-
-                      <select
-                        value={statusFilter}
-                        onChange={(e) =>
-                          dispatch(setStatusFilter(e.target.value as any))
-                        }
-                        className="bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-                      >
-                        <option value="ALL">All Case Statuses</option>
-                        <option value="Assigned to CMO">Assigned to CMO</option>
-                        <option value="Action In Progress">
-                          Action In Progress
-                        </option>
-                        <option value="Logged & Verified">
-                          Logged & Verified
-                        </option>
-                        <option value="Resolved">Resolved</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* FEEDBACKS DATA GRID TABLE */}
-                <div className="bg-white text-slate-900 rounded-3xl overflow-hidden shadow-sm border border-slate-200">
-                  <div className="px-5 py-4 bg-[#001529] text-white flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                      <Icon
-                        icon="ph:list-bullets-bold"
-                        className="w-4 h-4 text-blue-400"
-                      />
-                      Showing {filteredRecords.length} Active Patients logs
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-                      Click details to open comprehensive user history, logs &
-                      play recordings
-                    </span>
-                  </div>
-
-                  {filteredRecords.length === 0 ? (
-                    <div className="p-12 text-center text-slate-400 space-y-2">
-                      <Icon
-                        icon="ph:tray-bold"
-                        className="w-12 h-12 mx-auto text-slate-350"
-                      />
-                      <p className="text-sm font-extrabold text-slate-600">
-                        No matching telemetry logs found.
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        Modify your search query or reset dropdown filters.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                            <th className="py-4 px-5">Patient & Tracking ID</th>
-                            <th className="py-4 px-5">Healthcare Facility</th>
-                            <th className="py-4 px-5">Overall Rating</th>
-                            <th className="py-4 px-5">Audio & Uploads</th>
-                            <th className="py-4 px-5">Audits & Status</th>
-                            <th className="py-4 px-5 text-right">
-                              Inspect Detail
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                          {filteredRecords.map((record) => {
-                            const hasAudio =
-                              record.registration.audioUrl ||
-                              record.doctor.audioUrl ||
-                              record.pharmacy.audioUrl ||
-                              record.cleanliness.audioUrl ||
-                              record.suggestions.audioUrl;
-
-                            const hasImage =
-                              record.registration.imageUrl ||
-                              record.doctor.imageUrl ||
-                              record.pharmacy.imageUrl ||
-                              record.cleanliness.imageUrl ||
-                              record.suggestions.imageUrl;
-
-                            const sampleAudio =
-                              record.registration.audioUrl ||
-                              record.doctor.audioUrl ||
-                              record.pharmacy.audioUrl ||
-                              record.cleanliness.audioUrl ||
-                              record.suggestions.audioUrl;
-
-                            return (
-                              <tr
-                                key={record.id}
-                                onClick={() =>
-                                  dispatch(openDetailModal(record))
-                                }
-                                className="hover:bg-slate-50/80 transition cursor-pointer group"
-                              >
-                                {/* Patient */}
-                                <td className="py-4 px-5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-[10px]">
-                                      {record.trackingId}
-                                    </span>
-                                    {record.urgency === "High SLA Priority" && (
-                                      <span
-                                        className="w-2 h-2 rounded-full bg-red-650 animate-pulse"
-                                        title="High SLA Priority"
-                                      />
-                                    )}
-                                  </div>
-                                  <div className="font-bold text-slate-900 mt-1.5 group-hover:text-blue-600 transition">
-                                    {record.patientName}
-                                  </div>
-                                  <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-                                    {record.mobileNumber} •{" "}
-                                    {record.aadhaarMasked}
-                                  </div>
-                                </td>
-
-                                {/* Facility */}
-                                <td className="py-4 px-5 max-w-xs">
-                                  <div
-                                    className="font-bold text-slate-800 truncate"
-                                    title={record.facilityName}
-                                  >
-                                    {record.facilityName}
-                                  </div>
-                                  <div className="text-[11px] text-slate-450 font-medium mt-0.5">
-                                    District: {record.district}
-                                  </div>
-                                </td>
-
-                                {/* Overall Rating */}
-                                <td className="py-4 px-5">
-                                  <span
-                                    className={`px-2.5 py-1 rounded-full font-black text-[10px] uppercase border inline-flex items-center gap-1 ${
-                                      record.overallRating === "Excellent"
-                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                        : record.overallRating === "Acceptable"
-                                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                                          : "bg-amber-50 text-amber-800 border-amber-300"
-                                    }`}
-                                  >
-                                    {record.overallRating}
-                                  </span>
-                                </td>
-
-                                {/* Media Audio Play button */}
-                                <td
-                                  className="py-4 px-5"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {hasAudio && sampleAudio && (
-                                      <AudioPlayerWidget
-                                        audioUrl={sampleAudio}
-                                        compact
-                                      />
-                                    )}
-                                    {hasImage && (
-                                      <span className="px-2.5 py-0.5 rounded-full bg-blue-550/10 text-blue-700 border border-blue-200 font-bold text-[10px] inline-flex items-center gap-1">
-                                        <Icon
-                                          icon="ph:camera-bold"
-                                          className="w-3 h-3"
-                                        />
-                                        <span>Photo</span>
-                                      </span>
-                                    )}
-                                    {!hasAudio && !hasImage && (
-                                      <span className="text-[11px] text-slate-400 font-semibold">
-                                        Text log
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-
-                                {/* Timestamp & Status */}
-                                <td className="py-4 px-5">
-                                  <div className="text-[11px] font-bold text-slate-450">
-                                    {record.timestamp}
-                                  </div>
-                                  <span
-                                    className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-full font-black text-[10px] border uppercase ${
-                                      record.status === "Resolved"
-                                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                                        : record.status === "Action In Progress"
-                                          ? "bg-blue-100 text-blue-800 border-blue-300"
-                                          : "bg-amber-100 text-amber-900 border-amber-300"
-                                    }`}
-                                  >
-                                    {record.status}
-                                  </span>
-                                </td>
-
-                                {/* Inspect Button */}
-                                <td className="py-4 px-5 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      dispatch(openDetailModal(record))
-                                    }
-                                    className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[11px] transition shadow-sm inline-flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <span>Details</span>
-                                    <Icon
-                                      icon="ph:caret-right-bold"
-                                      className="w-3 h-3 text-blue-400"
-                                    />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {/* ------------------------------------------------------------- */}
-            {/* TAB: PROFILE OVERVIEW */}
-            {/* ------------------------------------------------------------- */}
-            {activeMenu === "profile" && (
-              <motion.div
-                key="profile"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.3 }}
-                className="max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-md p-6 sm:p-10 space-y-8"
-              >
-                {/* Visual Header */}
-                <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-slate-100">
-                  <img
-                    src={cmoAvatar}
-                    alt="Dr. John Varma"
-                    className="w-24 h-24 rounded-3xl object-cover border-2 border-blue-500 shadow-md shadow-blue-500/10 shrink-0"
-                  />
-                  <div className="text-center sm:text-left space-y-1.5">
-                    <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-wider">
-                      Authenticated officer
-                    </span>
-                    <h2 className="text-2xl font-black text-slate-800">
-                      Dr. John Varma
-                    </h2>
-                    <p className="text-xs text-slate-400 font-semibold font-mono">
-                      Chief Medical Officer (CMO) • Delhi State Health Services
-                    </p>
-                  </div>
-                </div>
-
-                {/* Details layout Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-700 font-sans">
-                  <div className="space-y-4">
-                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-1.50">
-                      <div className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">
-                        Official Email
-                      </div>
-                      <div className="font-mono font-black text-slate-800 mt-1">
-                        {adminEmail}
-                      </div>
-                    </div>
-                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-1.50">
-                      <div className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">
-                        Jurisdiction (Active Districts)
-                      </div>
-                      <div className="font-black text-slate-800 mt-1">
-                        NCT of Delhi (Central, Rohini, West, Dwarka hubs)
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-1.50">
-                      <div className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">
-                        Key Signature Status
-                      </div>
-                      <div className="font-black text-emerald-600 mt-1 flex items-center gap-1">
-                        <Icon
-                          icon="ph:shield-check-fill"
-                          className="w-4 h-4 text-emerald-500"
-                        />{" "}
-                        Digital SHA-256 Verified Signature
-                      </div>
-                    </div>
-                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-1.50">
-                      <div className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">
-                        Total Actions Taken (This Month)
-                      </div>
-                      <div className="font-mono font-black text-slate-800 mt-1">
-                        42 Grievance Audits Closed
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-blue-50/50 border border-blue-150 rounded-2xl text-[11px] text-blue-900 font-medium leading-relaxed">
-                  <span className="font-extrabold flex items-center gap-1.5 mb-1.5">
-                    <Icon
-                      icon="ph:shield-check-bold"
-                      className="w-4 h-4 text-blue-600"
-                    />{" "}
-                    Security Access Notice
+            {/* TWO COLUMN GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+              {/* Left Column: Current Monthly Cycle Details with Attractive Mini Chart */}
+              <div className="bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-lg p-5 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">
+                    Current Monthly Cycle
                   </span>
-                  Your administrative credentials authorize you to perform
-                  audits, coordinate inventory refills, and append resolution
-                  notes to public grievance escalations under the Digital India
-                  Health Protocol.
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
-              </motion.div>
-            )}
 
-            {/* ------------------------------------------------------------- */}
-            {/* TAB: RESULT (CATEGORY WISE STATS) */}
-            {/* ------------------------------------------------------------- */}
-            {activeMenu === "result" && (
-              <motion.div
-                key="result"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-6">
-                  <div>
-                    <h3 className="text-lg font-black text-slate-800">
-                      Category Breakdown Performance
-                    </h3>
-                    <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                      Average satisfaction rate of patients across core hospital
-                      services.
-                    </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+                    <div className="text-xs text-slate-400 font-medium">
+                      Active Clinics
+                    </div>
+                    <div className="text-2xl font-bold text-white mt-1">1</div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Category 1 */}
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                      <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-                        <span className="flex items-center gap-2 font-bold">
-                          <Icon
-                            icon="ph:qr-code-bold"
-                            className="w-4.5 h-4.5 text-slate-500"
-                          />
-                          Registration Desk & Tokens
-                        </span>
-                        <span className="text-emerald-700 font-mono font-black">
-                          92.4% Satisfied
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
-                        <div className="bg-emerald-500 h-full w-[92.4%]" />
-                        <div className="bg-amber-450 h-full w-[5%]" />
-                        <div className="bg-red-500 h-full w-[2.6%]" />
-                      </div>
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+                    <div className="text-xs text-slate-400 font-medium">
+                      Feedbacks
                     </div>
-
-                    {/* Category 2 */}
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                      <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-                        <span className="flex items-center gap-2 font-bold">
-                          <Icon
-                            icon="ph:stethoscope-bold"
-                            className="w-4.5 h-4.5 text-slate-500"
-                          />
-                          Doctor Consultations
-                        </span>
-                        <span className="text-emerald-700 font-mono font-black">
-                          96.8% Satisfied
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
-                        <div className="bg-emerald-500 h-full w-[96.8%]" />
-                        <div className="bg-amber-450 h-full w-[2%]" />
-                        <div className="bg-red-500 h-full w-[1.2%]" />
-                      </div>
+                    <div className="text-2xl font-bold text-amber-400 mt-1">
+                      {filteredRecords.length || 42}
                     </div>
-
-                    {/* Category 3 */}
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                      <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-                        <span className="flex items-center gap-2 font-bold">
-                          <Icon
-                            icon="ph:pill-bold"
-                            className="w-4.5 h-4.5 text-slate-500"
-                          />
-                          Pharmacy & Medication Stocks
-                        </span>
-                        <span className="text-amber-700 font-mono font-black">
-                          84.1% Satisfied
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
-                        <div className="bg-emerald-500 h-full w-[84.1%]" />
-                        <div className="bg-amber-450 h-full w-[10%]" />
-                        <div className="bg-red-500 h-full w-[5.9%]" />
-                      </div>
-                    </div>
-
-                    {/* Category 4 */}
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                      <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-                        <span className="flex items-center gap-2 font-bold">
-                          <Icon
-                            icon="ph:sparkles-bold"
-                            className="w-4.5 h-4.5 text-slate-500"
-                          />
-                          Facility Cleanliness
-                        </span>
-                        <span className="text-emerald-700 font-mono font-black">
-                          88.5% Satisfied
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden flex">
-                        <div className="bg-emerald-500 h-full w-[88.5%]" />
-                        <div className="bg-amber-450 h-full w-[7.5%]" />
-                        <div className="bg-red-500 h-full w-[4%]" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Legend breakdown */}
-                  <div className="flex flex-wrap items-center justify-center gap-6 pt-4 border-t border-slate-100 text-xs font-bold text-slate-550">
-                    <span className="flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded bg-emerald-500" />{" "}
-                      Excellent (Positive)
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded bg-amber-400" />{" "}
-                      Acceptable (Medium)
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 rounded bg-red-500" />{" "}
-                      Grievance (Could Be Better)
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ------------------------------------------------------------- */}
-            {/* TAB: EXCEPTION (GRIEVANCES ESCALATIONS) */}
-            {/* ------------------------------------------------------------- */}
-            {activeMenu === "exception" && (
-              <motion.div
-                key="exception"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                {/* Header warning info panel */}
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-3xl flex items-start gap-3.5">
-                  <Icon
-                    icon="ph:warning-octagon-fill"
-                    className="w-6 h-6 text-amber-600 shrink-0 mt-0.5"
-                  />
-                  <div className="space-y-1 text-xs text-amber-900 leading-normal">
-                    <span className="font-bold uppercase tracking-wider block">
-                      Grievance Escalations Radar
-                    </span>
-                    This page lists active, high-priority issues classified as
-                    "Could Be Better" overall or marked for SLA escalations.
-                    Re-audit inventories, warn staff, or dispatch resolutions.
                   </div>
                 </div>
 
-                {/* Grievance Table container */}
-                <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-200">
-                  <div className="px-5 py-4 bg-red-950 text-white flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                      <Icon
-                        icon="ph:warning-circle-bold"
-                        className="w-4.5 h-4.5 text-red-400"
+                {/* ATTRACTIVE MINI CHART FOR CURRENT MONTHLY CYCLE */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-slate-300 font-bold">
+                      Weekly Cycle Trend
+                    </div>
+                    <span className="text-[10px] text-amber-400 font-mono font-bold">
+                      +14% Growth
+                    </span>
+                  </div>
+                  <div className="h-28 relative">
+                    <svg viewBox="0 0 100 45" className="w-full h-full">
+                      <defs>
+                        <linearGradient
+                          id="miniMonthGrad"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#F59E0B"
+                            stopOpacity="0.4"
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#F59E0B"
+                            stopOpacity="0.0"
+                          />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M 0 35 Q 25 5, 50 12 T 75 10 T 100 8 L 100 45 L 0 45 Z"
+                        fill="url(#miniMonthGrad)"
                       />
-                      Critical SLA Telemetry Escalations ({grievanceCount})
-                    </span>
-                  </div>
-
-                  {grievanceRecords.length === 0 ? (
-                    <div className="p-12 text-center text-slate-400">
-                      <Icon
-                        icon="ph:check-circle-bold"
-                        className="w-12 h-12 mx-auto text-emerald-500 mb-2"
+                      <motion.path
+                        d="M 0 35 Q 25 5, 50 12 T 75 10 T 100 8"
+                        fill="none"
+                        stroke="#F59E0B"
+                        strokeWidth="0.5"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 1 }}
                       />
-                      <p className="text-sm font-bold text-slate-700">
-                        All Grievances Resolved!
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Excellent compliance - 0 active complaints.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                            <th className="py-4 px-5">Patient & Tracking ID</th>
-                            <th className="py-4 px-5">Healthcare Facility</th>
-                            <th className="py-4 px-5">Media Attachment</th>
-                            <th className="py-4 px-5">Status Case</th>
-                            <th className="py-4 px-5 text-right">
-                              Coordinate Action
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                          {grievanceRecords.map((record) => {
-                            const sampleAudio =
-                              record.registration.audioUrl ||
-                              record.doctor.audioUrl ||
-                              record.pharmacy.audioUrl ||
-                              record.cleanliness.audioUrl ||
-                              record.suggestions.audioUrl;
-
-                            return (
-                              <tr
-                                key={record.id}
-                                onClick={() =>
-                                  dispatch(openDetailModal(record))
-                                }
-                                className="hover:bg-slate-50 transition cursor-pointer"
-                              >
-                                <td className="py-4 px-5">
-                                  <span className="font-mono font-black text-red-800 bg-red-50 px-2 py-0.5 rounded border border-red-200 text-[10px]">
-                                    {record.trackingId}
-                                  </span>
-                                  <div className="font-bold text-slate-900 mt-1.5">
-                                    {record.patientName}
-                                  </div>
-                                  <div className="text-[11px] text-slate-400 font-semibold mt-0.5">
-                                    {record.mobileNumber}
-                                  </div>
-                                </td>
-
-                                <td className="py-4 px-5">
-                                  <div className="font-bold text-slate-800 truncate max-w-xs">
-                                    {record.facilityName}
-                                  </div>
-                                  <div className="text-[11px] text-slate-450 mt-0.5 font-semibold">
-                                    District: {record.district}
-                                  </div>
-                                </td>
-
-                                <td
-                                  className="py-4 px-5"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {sampleAudio ? (
-                                    <AudioPlayerWidget
-                                      audioUrl={sampleAudio}
-                                      compact
-                                    />
-                                  ) : (
-                                    <span className="text-[11px] text-slate-400 font-semibold">
-                                      Text suggestion
-                                    </span>
-                                  )}
-                                </td>
-
-                                <td className="py-4 px-5">
-                                  <span
-                                    className={`px-2.5 py-0.5 rounded-full font-black text-[10px] border uppercase ${
-                                      record.status === "Resolved"
-                                        ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                                        : record.status === "Action In Progress"
-                                          ? "bg-blue-100 text-blue-850 border-blue-200"
-                                          : "bg-red-100 text-red-900 border-red-200"
-                                    }`}
-                                  >
-                                    {record.status}
-                                  </span>
-                                </td>
-
-                                <td className="py-4 px-5 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      dispatch(openDetailModal(record))
-                                    }
-                                    className="px-3.5 py-1.5 rounded-xl bg-red-650 hover:bg-red-700 text-white font-extrabold text-[11px] transition shadow-md cursor-pointer flex items-center gap-1 inline-flex"
-                                  >
-                                    <span>Action</span>
-                                    <Icon
-                                      icon="ph:arrow-square-out-bold"
-                                      className="w-3.5 h-3.5"
-                                    />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {/* ------------------------------------------------------------- */}
-            {/* TAB: ACCOUNT / SETTINGS */}
-            {/* ------------------------------------------------------------- */}
-            {activeMenu === "account" && (
-              <motion.div
-                key="account"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                {/* District Performance metrics */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-6">
-                  <div>
-                    <h3 className="text-base font-black text-slate-800">
-                      District Audit Telemetry Nodes
-                    </h3>
-                    <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                      Realtime evaluation indices of regional administrative
-                      zones.
-                    </p>
+                      <circle cx="25" cy="14" r="1.5" fill="#F59E0B" />
+                      <circle cx="50" cy="12" r="1.5" fill="#F59E0B" />
+                      <circle cx="75" cy="10" r="1.5" fill="#F59E0B" />
+                      <circle cx="100" cy="8" r="1.5" fill="#F59E0B" />
+                    </svg>
                   </div>
+                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <span>W1</span>
+                    <span>W2</span>
+                    <span>W3</span>
+                    <span>W4</span>
+                  </div>
+                </div>
+              </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs text-slate-700">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-450 uppercase tracking-widest">
-                          <th className="py-3 px-4">District Node</th>
-                          <th className="py-3 px-4">Total Submissions</th>
-                          <th className="py-3 px-4">Satisfied Ratio</th>
-                          <th className="py-3 px-4">Active Grievances</th>
-                          <th className="py-3 px-4">SLA Compliance</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-sans">
-                        {[
-                          {
-                            name: "Central Delhi",
-                            count: 340,
-                            rating: "94.2%",
-                            complaints: 2,
-                            sla: "98.5%",
-                          },
-                          {
-                            name: "North West Delhi",
-                            count: 285,
-                            rating: "96.8%",
-                            complaints: 0,
-                            sla: "100%",
-                          },
-                          {
-                            name: "South Delhi",
-                            count: 412,
-                            rating: "88.1%",
-                            complaints: 4,
-                            sla: "92.4%",
-                          },
-                          {
-                            name: "East Delhi",
-                            count: 201,
-                            rating: "92.4%",
-                            complaints: 1,
-                            sla: "96.8%",
-                          },
-                        ].map((d, idx) => (
-                          <tr
-                            key={idx}
-                            className="hover:bg-slate-50 transition-all"
+              {/* Right Column: Feedbacks Data Table */}
+              <div className="lg:col-span-2 bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+                <div className="px-5 py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                    Feedback Records ({filteredRecords.length})
+                  </span>
+
+                  {/* Pagination Pills */}
+                  <div className="flex items-center gap-1 font-mono text-xs">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (p) => (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-6 h-6 rounded-md flex items-center justify-center transition cursor-pointer ${
+                            currentPage === p
+                              ? "bg-amber-500 text-slate-950 font-bold"
+                              : "bg-slate-800 text-slate-400 hover:text-white"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
+
+                {/* Table Content */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-900/60 text-slate-400 border-b border-slate-800 font-semibold uppercase tracking-wider">
+                        <th className="py-3 px-4 w-12">Sr. No</th>
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4">Clinic Name</th>
+                        <th className="py-3 px-4">Station HQ</th>
+                        <th className="py-3 px-4">Response</th>
+                        <th className="py-3 px-4 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-medium">
+                      {paginatedRecords.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="py-10 text-center text-slate-400"
                           >
-                            <td className="py-3.5 px-4 font-bold text-slate-800">
-                              {d.name}
-                            </td>
-                            <td className="py-3.5 px-4 font-mono font-bold text-slate-650">
-                              {d.count}
-                            </td>
-                            <td className="py-3.5 px-4 font-mono font-extrabold text-emerald-600">
-                              {d.rating}
-                            </td>
-                            <td className="py-3.5 px-4 font-mono font-bold text-red-650">
-                              {d.complaints}
-                            </td>
-                            <td className="py-3.5 px-4 font-mono font-black text-slate-800">
-                              {d.sla}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </main>
-      </div>
+                            No matching feedback records found.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedRecords.map((r, idx) => {
+                          const rating = String(
+                            r.responseType || r.overallRating,
+                          );
+                          let responseClass = "text-emerald-400";
+                          if (rating === "Could Be Better")
+                            responseClass = "text-red-400";
+                          if (
+                            rating === "Acceptable standard" ||
+                            rating === "Acceptable"
+                          )
+                            responseClass = "text-amber-400";
 
-      {/* ------------------------------------------------------------- */}
-      {/* GLOBAL USER FEEDBACK DETAILS MODAL */}
-      {/* ------------------------------------------------------------- */}
+                          return (
+                            <tr
+                              key={r.id}
+                              className="hover:bg-slate-800/40 transition"
+                            >
+                              <td className="py-3 px-4 font-medium text-slate-400">
+                                {(currentPage - 1) * itemsPerPage + idx + 1}
+                              </td>
+                              <td className="py-3 px-4 text-slate-300 font-medium">
+                                {r.date || r.timestamp}
+                              </td>
+                              <td className="py-3 px-4 font-medium text-white">
+                                {r.clinicName || r.facilityName}
+                              </td>
+                              <td className="py-3 px-4 text-slate-300 font-medium">
+                                {r.stationHq || "Jamnagar"}
+                              </td>
+                              <td
+                                className={`py-3 px-4 font-medium ${responseClass}`}
+                              >
+                                {rating}
+                              </td>
+
+                              <td className="py-3 px-4 text-center space-x-2">
+                                {/* View Button */}
+                                <button
+                                  onClick={() => dispatch(openDetailModal(r))}
+                                  className="relative group px-3 py-1 rounded-lg border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 text-xs font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="1em"
+                                    height="1em"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path d="M0 0h24v24H0z" fill="none" />
+                                    <g
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                    >
+                                      <path d="M21.257 10.962c.474.62.474 1.457 0 2.076C19.764 14.987 16.182 19 12 19s-7.764-4.013-9.257-5.962a1.69 1.69 0 0 1 0-2.076C4.236 9.013 7.818 5 12 5s7.764 4.013 9.257 5.962" />
+                                      <circle cx="12" cy="12" r="3" />
+                                    </g>
+                                  </svg>
+
+                                  {/* Tooltip */}
+                                  <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg border border-gray-700">
+                                    View
+                                  </span>
+                                </button>
+
+                                {/* Escalate Button */}
+                                {r.status !== "Assigned to CMO" && (
+                                  <button
+                                    onClick={(e) => handleEscalateCMO(r.id, e)}
+                                    className="relative group px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold transition cursor-pointer inline-flex items-center gap-1"
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="1em"
+                                      height="1em"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path d="M0 0h24v24H0z" fill="none" />
+                                      <path
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="m22 11l-7-9v5C3.047 7 1.668 16.678 2 22c.502-2.685.735-7 13-7v5z"
+                                      />
+                                    </svg>
+
+                                    {/* Tooltip */}
+                                    <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg border border-gray-700">
+                                      Escalate
+                                    </span>
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 3: REPORTS TAB */}
+        {/* =================================================================== */}
+        {activeTab === "reports" && (
+          <motion.div
+            key="reports"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-[#111827] border border-slate-800 rounded-2xl p-8 text-center space-y-4"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto">
+              <Icon icon="ph:file-text-bold" className="w-7 h-7" />
+            </div>
+            <h3 className="text-xl font-bold text-white">
+              Feedback Reports & Data Export
+            </h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">
+              Download complete telemetry reports for Feedback, grievances, and
+              patient feedback.
+            </p>
+
+            <div className="flex justify-center gap-3 pt-2">
+              <button
+                onClick={() =>
+                  exportToCSV(
+                    filteredRecords,
+                    "Arogya_Mandir_Feedback_Report.csv",
+                  )
+                }
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-2"
+              >
+                <Icon icon="ph:file-xls-bold" className="w-4 h-4" />
+                <span>Export CSV File</span>
+              </button>
+              <button
+                onClick={() =>
+                  exportToPDF(
+                    filteredRecords,
+                    "Arogya Mandir Governance Summary",
+                  )
+                }
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-2"
+              >
+                <Icon icon="ph:file-pdf-bold" className="w-4 h-4" />
+                <span>Export PDF Report</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </main>
+
+      {/* DETAIL MODAL */}
       <UserFeedbackDetailModal />
     </div>
   );

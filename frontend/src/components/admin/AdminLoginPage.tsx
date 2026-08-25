@@ -52,7 +52,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#0A101D] via-[#0D1527] to-[#040812] text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
       {/* Executive Clean Header */}
-      <header className="w-full bg-[#070D1B]/40 backdrop-blur-md border-b border-slate-800/60 px-6 py-4 flex items-center justify-between z-10">
+      <header className="w-full bg-[#070D1B]/40 backdrop-blur-md border-b border-slate-800/60 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 z-10">
         <div className="flex items-center gap-3">
           <div className=" rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
             <div className="w-10 h-10 border border-white rounded-full text-white flex items-center justify-center shrink-0 shadow-sm">
@@ -88,7 +88,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
         <button
           type="button"
           onClick={onBackToPatientForm}
-          className="px-4 py-2 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-xs font-bold transition-all duration-200 flex items-center gap-2 border border-slate-700/60 hover:border-slate-500/50 cursor-pointer hover:shadow-lg active:scale-95"
+          className="self-end sm:self-auto px-4 py-2 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-xs font-bold transition-all duration-200 flex items-center gap-2 border border-slate-700/60 hover:border-slate-500/50 cursor-pointer hover:shadow-lg active:scale-95"
         >
           <Icon
             icon="ph:arrow-left-bold"
@@ -108,7 +108,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="w-full max-w-[460px] bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-4xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] p-6 sm:p-10 space-y-6 text-center z-10"
+          className="w-full max-w-[460px] bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-4xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] p-4 sm:p-10 space-y-6 text-center z-10"
         >
           {/* Logo Brand Icon */}
           <div className=" w-14 h-14 mx-auto rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
@@ -147,7 +147,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
           </div>
 
           {/* Form Container */}
-          <div className="bg-white text-slate-900 rounded-[24px] p-5 sm:p-6 shadow-2xl text-left space-y-4">
+          <div className="bg-white text-slate-900 rounded-[24px] p-4 sm:p-6 shadow-2xl text-left space-y-4">
             {errorMsg && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
