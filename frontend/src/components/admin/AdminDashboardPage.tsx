@@ -20,13 +20,22 @@ import { exportToCSV, exportToPDF } from "./exportUtils";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
 import cmoAvatar from "../../assets/cmo_avatar.jpg";
+import { DUMMY_FEEDBACK_RECORDS, type FeedbackRecord } from "./dummyData";
 
 interface AdminDashboardPageProps {
   onBackToPatientForm: () => void;
 }
 
-type MainNavTab = "dashboard" | "feedbacks" | "reports";
+type MainNavTab = "dashboard" | "feedbacks" | "reports" | "notifications";
 type DashboardSubTab = "overview" | "analysis";
+
+interface NotificationItem {
+  id: string;
+  srNo: number;
+  message: string;
+  record: FeedbackRecord;
+  checked: boolean;
+}
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   onBackToPatientForm,
@@ -51,6 +60,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [dashSubTab, setDashSubTab] = useState<DashboardSubTab>("overview");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Logout Modal State
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   // Grievance Toggle State
   const [showGrievancesOnly, setShowGrievancesOnly] = useState<boolean>(false);
 
@@ -62,6 +74,34 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const [selectedStationHq, setSelectedStationHq] = useState<string>("ALL");
   const [selectedResponseType, setSelectedResponseType] =
     useState<string>("ALL");
+
+  // Notifications State (Matching Image 1)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([
+    {
+      id: "notif-1",
+      srNo: 1,
+      message:
+        "The Feedback from qeqweeqw with concerns No. COK/PC/KNM/2026/8/25-01 is unsatisfactory from Kunnamkulam Polyclinic on date 2026-08-25 Please go through the detailed feedback.",
+      record: DUMMY_FEEDBACK_RECORDS[0],
+      checked: false,
+    },
+    {
+      id: "notif-2",
+      srNo: 2,
+      message:
+        "The Feedback from Hav Subhash Kumar with concerns No. JAM/PC/RAJ/2026/8/24-03 is unsatisfactory from Rajkot Polyclinic on date 2026-08-24 Please go through the detailed feedback.",
+      record: DUMMY_FEEDBACK_RECORDS[1],
+      checked: false,
+    },
+    {
+      id: "notif-3",
+      srNo: 3,
+      message:
+        "The Feedback from Smt. Manjula Patel with concerns No. JAM/PC/RAJ/2026/8/22-08 is unsatisfactory from Rajkot Polyclinic on date 2026-08-22 Please go through the detailed feedback.",
+      record: DUMMY_FEEDBACK_RECORDS[2],
+      checked: false,
+    },
+  ]);
 
   // Notifications & Toast State
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -86,6 +126,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
       setShowGrievancesOnly(true);
       setSelectedResponseType("Could Be Better");
       showToast("Showing Grievances Only");
+    }
+  };
+
+  // Mark Selected / All Notifications as Seen
+  const handleMarkAsSeen = () => {
+    const checkedItems = notifications.filter((n) => n.checked);
+    if (checkedItems.length > 0) {
+      setNotifications(notifications.filter((n) => !n.checked));
+      showToast(`${checkedItems.length} Notification(s) marked as seen`);
+    } else {
+      setNotifications([]);
+      showToast("All Notifications marked as seen");
     }
   };
 
@@ -254,11 +306,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               </g>
             </svg>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-white tracking-tight">
+          <div className="flex flex-col items-start gap-1">
+            <span className="text-xl font-bold tracking-wide text-white">
               Arogya Mandir
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 text-[11px] font-semibold border border-slate-700">
+            <span className="px-2 py-0.1 rounded-full bg-slate-800 text-amber-400 text-[10px] font-semibold border border-slate-700">
               Dashboard
             </span>
           </div>
@@ -267,7 +319,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         {/* Center: Primary Navigation Tabs */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
           {[
-            { id: "dashboard", label: "Dashboard", icon: "ant-design:dashboard-outlined" },
+            {
+              id: "dashboard",
+              label: "Dashboard",
+              icon: "ant-design:dashboard-outlined",
+            },
             {
               id: "feedbacks",
               label: "Feedbacks",
@@ -278,12 +334,29 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               label: "Reports & Export",
               icon: "oui:nav-reports",
             },
+            {
+              id: "notifications",
+              label: "Notifications",
+              icon: "clarity:notification-outline-badged",
+              badge: notifications.length,
+            },
+            {
+              id: "logout",
+              label: "Logout",
+              icon: "ph:sign-out-bold",
+            },
           ].map((nav) => {
             const isActive = activeTab === nav.id;
             return (
               <button
                 key={nav.id}
-                onClick={() => setActiveTab(nav.id as MainNavTab)}
+                onClick={() => {
+                  if (nav.id === "logout") {
+                    setShowLogoutModal(true);
+                  } else {
+                    setActiveTab(nav.id as MainNavTab);
+                  }
+                }}
                 className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-2 relative ${
                   isActive
                     ? "text-amber-400 font-bold bg-slate-800/90 shadow-sm"
@@ -292,6 +365,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               >
                 <Icon icon={nav.icon} className="w-4 h-4" />
                 <span>{nav.label}</span>
+                {nav.badge && nav.badge > 0 ? (
+                  <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold flex items-center justify-center">
+                    {nav.badge}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -353,24 +431,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             )}
           </div>
 
-          {/* Switch to Patient Form */}
-          <button
-            onClick={onBackToPatientForm}
-            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
-            title="Patient Feedback Form"
-          >
-            <Icon icon="ph:arrow-square-out-bold" className="w-4 h-4" />
-          </button>
-
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="p-1.5 rounded-xl bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition cursor-pointer"
-            title="Logout"
-          >
-            <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
-          </button>
-
           {/* Mobile Nav Toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -409,12 +469,26 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 label: "Reports & Export",
                 icon: "ph:file-text-bold",
               },
+              {
+                id: "notifications",
+                label: "Notifications",
+                icon: "clarity:notification-outline-badged",
+              },
+              {
+                id: "logout",
+                label: "Logout",
+                icon: "ph:sign-out-bold",
+              },
             ].map((nav) => (
               <button
                 key={nav.id}
                 onClick={() => {
-                  setActiveTab(nav.id as MainNavTab);
                   setMobileMenuOpen(false);
+                  if (nav.id === "logout") {
+                    setShowLogoutModal(true);
+                  } else {
+                    setActiveTab(nav.id as MainNavTab);
+                  }
                 }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 transition ${
                   activeTab === nav.id
@@ -427,6 +501,55 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               </button>
             ))}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showLogoutModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="bg-[#111827] border border-slate-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl z-50"
+            >
+              <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center mx-auto">
+                <Icon icon="ph:sign-out-bold" className="w-6 h-6 text-red-400" />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-white">
+                  Are you sure to logout?
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  You will be logged out of your admin session and redirected to login.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutModal(false)}
+                  className="py-2.5 px-4 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogoutModal(false);
+                    handleLogout();
+                  }}
+                  className="py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md transition cursor-pointer"
+                >
+                  Logout
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -1010,6 +1133,140 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <Icon icon="ph:file-pdf-bold" className="w-4 h-4" />
                 <span>Export PDF Report</span>
               </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 4: NOTIFICATIONS TAB (MATCHING IMAGE 1) */}
+        {/* =================================================================== */}
+        {activeTab === "notifications" && (
+          <motion.div
+            key="notifications"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            {/* Top Breadcrumb & Header Box */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                  <span>Dashboard</span>
+                  <Icon icon="ph:caret-right-bold" className="w-3 h-3 text-slate-600" />
+                  <span className="text-amber-400 font-semibold">Notifications</span>
+                </div>
+
+                <div className="mt-3 bg-[#111827]/90 border border-slate-800 rounded-2xl px-6 py-4 shadow-lg inline-block">
+                  <h2 className="text-2xl font-bold text-amber-400">
+                    Notifications List
+                  </h2>
+                </div>
+              </div>
+
+              {/* Action Button: Make Marked as Seen */}
+              <button
+                onClick={handleMarkAsSeen}
+                className="self-end sm:self-auto px-4 py-2 rounded-lg border border-amber-400 text-amber-400 font-bold text-xs hover:bg-amber-400/10 transition cursor-pointer flex items-center gap-2 shadow-sm"
+              >
+                <span>Make Marked as Seen</span>
+              </button>
+            </div>
+
+            {/* NOTIFICATIONS TABLE CARD CONTAINER */}
+            <div className="bg-[#181F2F] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+              {/* Yellow Banner Header */}
+              <div className="bg-amber-400 text-slate-950 px-5 py-3 font-bold text-sm tracking-wide flex items-center justify-between shadow-md">
+                <span>List of Notifications</span>
+              </div>
+
+              {/* Table Column Header Row */}
+              <div className="bg-[#1f293d] border-b border-slate-700/80 px-5 py-3 grid grid-cols-12 gap-3 text-xs font-semibold text-slate-300 uppercase tracking-wider items-center">
+                <div className="col-span-1">Sr. No</div>
+                <div className="col-span-8 sm:col-span-9">Name</div>
+                <div className="col-span-2 sm:col-span-1 text-center">Action</div>
+                <div className="col-span-1 text-right">
+                  <input
+                    type="checkbox"
+                    checked={notifications.length > 0 && notifications.every((n) => n.checked)}
+                    onChange={(e) => {
+                      const checkedAll = e.target.checked;
+                      setNotifications(notifications.map((n) => ({ ...n, checked: checkedAll })));
+                    }}
+                    className="w-4 h-4 rounded border-slate-700 accent-amber-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              {/* Notification Table Rows */}
+              <div className="divide-y divide-slate-800/80">
+                {notifications.length === 0 ? (
+                  <div className="p-12 text-center text-slate-400 text-sm font-medium">
+                    No unread notifications available. All items marked as seen.
+                  </div>
+                ) : (
+                  notifications.map((notif, idx) => (
+                    <div
+                      key={notif.id}
+                      className={`px-5 py-4 grid grid-cols-12 gap-3 text-xs items-center transition ${
+                        notif.checked ? "bg-amber-500/5" : "hover:bg-slate-800/50"
+                      }`}
+                    >
+                      {/* Sr. No */}
+                      <div className="col-span-1 font-mono font-bold text-slate-300">
+                        {idx + 1}
+                      </div>
+
+                      {/* Notification Message */}
+                      <div className="col-span-8 sm:col-span-9 text-slate-200 font-normal leading-relaxed">
+                        {notif.message}
+                      </div>
+
+                      {/* Action: View Details */}
+                      <div className="col-span-2 sm:col-span-1 text-center">
+                        <button
+                          onClick={() => {
+                            dispatch(openDetailModal(notif.record));
+                            // Mark as seen / remove from notification list
+                            setNotifications(notifications.filter((n) => n.id !== notif.id));
+                          }}
+                          className="px-3.5 py-1.5 rounded-lg border border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-950 font-bold text-xs transition cursor-pointer whitespace-nowrap shadow-sm"
+                        >
+                          View Details
+                        </button>
+                      </div>
+
+                      {/* Selection Checkbox */}
+                      <div className="col-span-1 text-right">
+                        <input
+                          type="checkbox"
+                          checked={notif.checked}
+                          onChange={(e) => {
+                            const checkedVal = e.target.checked;
+                            setNotifications(
+                              notifications.map((n) =>
+                                n.id === notif.id ? { ...n, checked: checkedVal } : n
+                              )
+                            );
+                          }}
+                          className="w-4 h-4 rounded border-slate-700 accent-amber-500 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Copyright & Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 text-[11px] text-slate-500 border-t border-slate-800/60">
+              <div className="flex items-center gap-1.5 font-bold text-white tracking-wider">
+                <span className="text-red-500 text-sm">ViTRIC</span>
+              </div>
+              <div>
+                © Insight is a Copyright to Vitric Business Solutions Pvt. Ltd. 2016 - Present. All rights reserved.
+              </div>
             </div>
           </motion.div>
         )}

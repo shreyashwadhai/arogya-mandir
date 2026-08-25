@@ -9,63 +9,52 @@ import { Icon } from '@iconify/react';
 
 type LanguageMode = 'english' | 'hindi' | 'gujarati' | 'marathi';
 
-const STEP_DEFINITIONS = [
-  {
-    key: 'registration',
-    sr: 1,
-    icon: 'ph:user-focus-bold',
-    title: {
-      english: 'Step 1: Token & Registration Counter',
-      hindi: 'चरण 1: टोकन एवं पंजीकरण काउंटर',
-      gujarati: 'પગલું 1: ટોકન અને નોંધણી કાઉન્ટર',
-      marathi: 'टप्पा 1: टोकन आणि नोंदणी काउंटर',
-    },
-  },
-  {
-    key: 'doctor',
-    sr: 2,
-    icon: 'ph:first-aid-kit-bold',
-    title: {
-      english: 'Step 2: Medical Officer / Doctor Consultation',
-      hindi: 'चरण 2: चिकित्सा अधिकारी / डॉक्टर परामर्श',
-      gujarati: 'પગલું 2: તબીબી અધિકારી / ડોક્ટર પરામર્શ',
-      marathi: 'टप्पा 2: वैद्यकीय अधिकारी / डॉक्टर सल्ला',
-    },
-  },
-  {
-    key: 'pharmacy',
-    sr: 3,
-    icon: 'ph:pill-bold',
-    title: {
-      english: 'Step 3: Pharmacy Medicine Availability',
-      hindi: 'चरण 3: फार्मेसी दवा उपलब्धता एवं वितरण',
-      gujarati: 'પગલું 3: ફાર્મસી દવાની ઉપલબ્ધતા અને વિતરણ',
-      marathi: 'टप्पा 3: फार्मसी औषध उपलब्धता व वाटप',
-    },
-  },
-  {
-    key: 'cleanliness',
-    sr: 4,
-    icon: 'ph:sparkles-bold',
-    title: {
-      english: 'Step 4: Cleanliness & Toilet Hygiene',
-      hindi: 'चरण 4: स्वच्छता एवं शौचालय सफाई',
-      gujarati: 'પગલું 4: સફાઈ અને શૌચાલયની સ્વચ્છતા',
-      marathi: 'टप्पा 4: स्वच्छता आणि स्वच्छतागृह',
-    },
-  },
-  {
-    key: 'suggestions',
-    sr: 5,
-    icon: 'ph:chat-text-bold',
-    title: {
-      english: 'Step 5: General Suggestions & Feedback',
-      hindi: 'चरण 5: सामान्य सुझाव एवं प्रतिक्रिया',
-      gujarati: 'પગલું 5: સામાન્ય સૂચનો અને પ્રતિસાદ',
-      marathi: 'टप्पा 5: सामान्य सूचना आणि अभिप्राय',
-    },
-  },
-];
+const QUESTION_DEFINITIONS = {
+  english: [
+    { sr: 1, text: "I am", key: "visitorType", isPersonal: true },
+    { sr: 2, text: "Name of Patient/Visitor?", key: "patientName", isPersonal: true },
+    { sr: 3, text: "AADHAAR Number / ECHS Health Card / ABHA Number", key: "aadhaarMasked", isPersonal: true },
+    { sr: 4, text: "Mobile Number (+91)", key: "mobileNumber", isPersonal: true },
+    { sr: 5, category: "Medical Care & Doctors", text: "How was your Doctor Consultation Experience?", key: "doctor" },
+    { sr: 6, category: "Pharmacy Dispensary", text: "How was your Pharmacy / Medicine Counter Experience?", key: "pharmacy" },
+    { sr: 7, category: "Medicine Availability", text: "Were all your Prescribed Medicines available free of cost?", key: "medicineAvailability" },
+    { sr: 8, category: "Hospital Cleanliness", text: "How was the Cleanliness & Sanitation of the Facility?", key: "cleanliness" },
+    { sr: 9, category: "Feedback & Grievance", text: "Any Suggestions, Grievance or Additional Comments?", key: "suggestions" },
+  ],
+  hindi: [
+    { sr: 1, text: "मैं हूँ", key: "visitorType", isPersonal: true },
+    { sr: 2, text: "मरीज़ / आगंतुक का नाम?", key: "patientName", isPersonal: true },
+    { sr: 3, text: "ईसीएचएस कार्ड / आभा नंबर", key: "aadhaarMasked", isPersonal: true },
+    { sr: 4, text: "मोबाइल नंबर (+91)", key: "mobileNumber", isPersonal: true },
+    { sr: 5, category: "चिकित्सा देखभाल एवं डॉक्टर", text: "आपका डॉक्टर परामर्श अनुभव कैसा रहा?", key: "doctor" },
+    { sr: 6, category: "फार्मेसी वितरण", text: "आपका फार्मेसी / दवा काउंटर अनुभव कैसा रहा?", key: "pharmacy" },
+    { sr: 7, category: "दवा उपलब्धता", text: "क्या आपकी सभी निर्धारित दवाएं मुफ्त उपलब्ध थीं?", key: "medicineAvailability" },
+    { sr: 8, category: "अस्पताल स्वच्छता", text: "सुविधा की स्वच्छता और सफाई कैसी थी?", key: "cleanliness" },
+    { sr: 9, category: "सुझाव एवं शिकायत", text: "कोई सुझाव, शिकायत या अतिरिक्त टिप्पणी?", key: "suggestions" },
+  ],
+  gujarati: [
+    { sr: 1, text: "હું છું", key: "visitorType", isPersonal: true },
+    { sr: 2, text: "દર્દી / મુલાકાતીનું નામ?", key: "patientName", isPersonal: true },
+    { sr: 3, text: "ECHS હેલ્થ કાર્ડ / આભા નંબર", key: "aadhaarMasked", isPersonal: true },
+    { sr: 4, text: "મોબાઇલ નંબર (+91)", key: "mobileNumber", isPersonal: true },
+    { sr: 5, category: "તબીબી સંભાળ અને તબીબો", text: "તમારો ડૉક્ટર પરામર્શ અનુભવ કેવો રહ્યો?", key: "doctor" },
+    { sr: 6, category: "ફાર્મસી કાઉન્ટર", text: "તમારો ફાર્મસી / દવા કાઉન્ટર અનુભવ કેવો રહ્યો?", key: "pharmacy" },
+    { sr: 7, category: "દવાની ઉપલબ્ધતા", text: "શું તમારી બધી નિયત દવાઓ મફત ઉપલબ્ધ હતી?", key: "medicineAvailability" },
+    { sr: 8, category: "હોસ્પિટલ સ્વચ્છતા", text: "સુવિધાઓની સફાઈ અને શૌચાલય સ્વચ્છતા કેવી હતી?", key: "cleanliness" },
+    { sr: 9, category: "સૂચનો અને ફરિયાદો", text: "કોઈ સૂચનો, ફરિયાદ અથવા વધારાની ટિપ્પણીઓ?", key: "suggestions" },
+  ],
+  marathi: [
+    { sr: 1, text: "मी आहे", key: "visitorType", isPersonal: true },
+    { sr: 2, text: "रुग्णाचे / भेट देणाऱ्याचे नाव?", key: "patientName", isPersonal: true },
+    { sr: 3, text: "ECHS हेल्थ कार्ड / आभा क्रमांक", key: "aadhaarMasked", isPersonal: true },
+    { sr: 4, text: "मोबाईल नंबर (+91)", key: "mobileNumber", isPersonal: true },
+    { sr: 5, category: "वैद्यकीय काळजी व डॉक्टर", text: "तुमचा डॉक्टर सल्ला अनुभव कसा होता?", key: "doctor" },
+    { sr: 6, category: "फार्मसी काउंटर", text: "तुमचा फार्मसी / औषध काउंटर अनुभव कसा होता?", key: "pharmacy" },
+    { sr: 7, category: "औषध उपलब्धता", text: "तुमची सर्व औषधे मोफत उपलब्ध होती का?", key: "medicineAvailability" },
+    { sr: 8, category: "रुग्णालय स्वच्छता", text: "सुविधेची स्वच्छता व स्वच्छतागृह स्वच्छता कशी होती?", key: "cleanliness" },
+    { sr: 9, category: "सूचना व तक्रारी", text: "काही सूचना, तक्रारी किंवा अतिरिक्त टिप्पण्या?", key: "suggestions" },
+  ],
+};
 
 export const UserFeedbackDetailModal: React.FC = () => {
   const dispatch = useDispatch();
@@ -78,11 +67,13 @@ export const UserFeedbackDetailModal: React.FC = () => {
   const [officerNote, setOfficerNote] = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
   const [activeImagePreview, setActiveImagePreview] = useState<string | null>(null);
+  const [activeTooltip, setActiveTooltip] = useState<number | null>(null);
 
   // CMO Voice Recording State
   const [isRecordingCMOVoice, setIsRecordingCMOVoice] = useState(false);
   const [cmoVoiceTimer, setCmoVoiceTimer] = useState(0);
   const [hasCmoRecordedAudio, setHasCmoRecordedAudio] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (selectedRecord) {
@@ -139,28 +130,77 @@ export const UserFeedbackDetailModal: React.FC = () => {
       setIsSubmittingNote(false);
       setHasCmoRecordedAudio(false);
       setCmoVoiceTimer(0);
+      setShowSuccessModal(true);
     }, 300);
   };
 
-  const getStepData = (key: string) => {
-    switch (key) {
-      case 'registration':
-        return selectedRecord.registration;
+  const getRowData = (item: any) => {
+    switch (item.key) {
+      case 'visitorType':
+        return {
+          answer: selectedRecord.visitorType || 'ESM/Spouse',
+          comments: null,
+          audioUrl: null,
+          imageUrl: null,
+        };
+      case 'patientName':
+        return {
+          answer: selectedRecord.patientName,
+          comments: null,
+          audioUrl: null,
+          imageUrl: null,
+        };
+      case 'aadhaarMasked':
+        return {
+          answer: selectedRecord.aadhaarMasked,
+          comments: null,
+          audioUrl: null,
+          imageUrl: null,
+        };
+      case 'mobileNumber':
+        return {
+          answer: selectedRecord.mobileNumber,
+          comments: null,
+          audioUrl: null,
+          imageUrl: null,
+        };
       case 'doctor':
-        return selectedRecord.doctor;
+        return {
+          answer: selectedRecord.doctor?.rating || 'Excellent',
+          comments: selectedRecord.doctor?.comments || null,
+          audioUrl: selectedRecord.doctor?.audioUrl || null,
+          imageUrl: selectedRecord.doctor?.imageUrl || null,
+        };
       case 'pharmacy':
-        return selectedRecord.pharmacy;
+        return {
+          answer: selectedRecord.pharmacy?.rating || 'Excellent',
+          comments: selectedRecord.pharmacy?.comments || null,
+          audioUrl: selectedRecord.pharmacy?.audioUrl || null,
+          imageUrl: selectedRecord.pharmacy?.imageUrl || null,
+        };
+      case 'medicineAvailability':
+        return {
+          answer: selectedRecord.pharmacy?.rating === 'Could Be Better' ? 'Could Be Better' : 'Yes (100% Free)',
+          comments: selectedRecord.pharmacy?.comments || 'All prescribed medicines available free of cost.',
+          audioUrl: null,
+          imageUrl: null,
+        };
       case 'cleanliness':
-        return selectedRecord.cleanliness;
+        return {
+          answer: selectedRecord.cleanliness?.rating || 'Excellent',
+          comments: selectedRecord.cleanliness?.comments || null,
+          audioUrl: selectedRecord.cleanliness?.audioUrl || null,
+          imageUrl: selectedRecord.cleanliness?.imageUrl || null,
+        };
       case 'suggestions':
         return {
-          rating: null,
-          comments: selectedRecord.suggestions?.text,
-          audioUrl: selectedRecord.suggestions?.audioUrl,
-          imageUrl: selectedRecord.suggestions?.imageUrl,
+          answer: selectedRecord.suggestions?.text ? 'Provided' : '-',
+          comments: selectedRecord.suggestions?.text || null,
+          audioUrl: selectedRecord.suggestions?.audioUrl || null,
+          imageUrl: selectedRecord.suggestions?.imageUrl || null,
         };
       default:
-        return null;
+        return { answer: '-', comments: null, audioUrl: null, imageUrl: null };
     }
   };
 
@@ -181,29 +221,32 @@ export const UserFeedbackDetailModal: React.FC = () => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-          className="relative z-10 w-full max-w-4xl bg-[#0F172A] text-slate-100 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
+          className="relative z-10 w-full max-w-5xl bg-[#0F172A] text-slate-100 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
         >
-          {/* HEADER BAR */}
-          <div className="px-6 py-4 bg-[#111827] border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-amber-400">
-                <span>Feedback Details</span>
-                <span className="text-slate-600">•</span>
-                <span className="font-mono text-slate-300">{selectedRecord.trackingId}</span>
+          {/* TOP UTILITY HEADER BAR */}
+          <div className="px-6 py-3.5 bg-[#111827] border-b border-slate-800 flex items-center justify-between gap-4 shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-xs">
+                <Icon icon="ph:file-text-bold" className="w-4 h-4" />
               </div>
-              <h2 className="text-xl font-bold text-white mt-0.5">
-                {selectedRecord.patientName}
-              </h2>
+              <div>
+                <h2 className="text-base font-bold text-white leading-tight">
+                  Patient Feedback Record Details
+                </h2>
+                <div className="text-[11px] text-slate-400 font-mono">
+                  Tracking ID: <span className="text-amber-400 font-bold">{selectedRecord.trackingId}</span>
+                </div>
+              </div>
             </div>
 
-            {/* Actions & PDF/CSV Export */}
+            {/* Actions & PDF/CSV Export Buttons */}
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => exportSingleRecordPDF(selectedRecord)}
                 className="px-3 py-1.5 rounded-xl bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
               >
                 <Icon icon="bi:filetype-pdf" className="w-4 h-4 text-red-500" />
-                <span>PDF</span>
+                <span>Download PDF</span>
               </button>
 
               <button
@@ -211,7 +254,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
                 className="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
               >
                 <Icon icon="bi:filetype-xls" className="w-4 h-4" />
-                <span>CSV</span>
+                <span>Export CSV</span>
               </button>
 
               <button
@@ -224,7 +267,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
           </div>
 
           {/* SCROLLABLE CONTENT BODY */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
             {/* SUMMARY METADATA CARD */}
             <div className="bg-[#111827] border border-slate-800 rounded-2xl p-4 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
               <div>
@@ -241,7 +284,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
 
               <div>
                 <span className="text-slate-400">Overall Rating Score</span>
-                <div className={`font-extrabold text-sm uppercase mt-0.5 ${
+                <div className={`font-bold text-sm uppercase mt-0.5 ${
                   String(selectedRecord.responseType || selectedRecord.overallRating) === 'Could Be Better'
                     ? 'text-red-400'
                     : 'text-emerald-400'
@@ -256,24 +299,24 @@ export const UserFeedbackDetailModal: React.FC = () => {
               </div>
             </div>
 
-            {/* STEP-BY-STEP FEEDBACK FORM RESPONSES */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Icon icon="ph:list-checks-bold" className="w-4 h-4 text-amber-400" />
-                  <span>Feedback Form Steps & Responses</span>
-                </h3>
+            {/* GOLDEN HEADER BANNER FOR TABLE - MATCHING REFERENCE IMAGE */}
+            <div className="bg-[#181F2F] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+              {/* Bright Golden-Yellow Banner Header Bar */}
+              <div className="bg-[#ffbf00e7] text-slate-950 px-5 py-3.5 flex items-center justify-between shadow-md">
+                <span className="font-bold text-sm tracking-wide">
+                  Answer Details
+                </span>
 
                 {/* Language Switcher Tabs */}
-                <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-                  {(['english', 'hindi', 'gujarati', 'marathi'] as LanguageMode[]).map((m) => (
+                <div className="flex items-center gap-1.5">
+                  {(['english', 'hindi', 'marathi','gujarati'] as LanguageMode[]).map((m) => (
                     <button
                       key={m}
                       onClick={() => setLang(m)}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize cursor-pointer transition ${
+                      className={`px-3 py-1 rounded-lg text-xs font-bold capitalize transition cursor-pointer ${
                         lang === m
-                          ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-slate-950 text-amber-400 border border-slate-900 shadow-sm'
+                          : 'border border-slate-950/40 text-slate-950 hover:bg-slate-950/10'
                       }`}
                     >
                       {m}
@@ -282,95 +325,132 @@ export const UserFeedbackDetailModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* CARD-BY-CARD DISPLAY FOR EACH FEEDBACK STEP */}
-              <div className="space-y-4">
-                {STEP_DEFINITIONS.map((step) => {
-                  const stepData = getStepData(step.key);
-                  if (!stepData) return null;
+              {/* TABLE CONTAINER FOR STEPS & RESPONSES */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#1e2738] text-slate-300 border-b border-slate-700/80 font-bold uppercase tracking-wider">
+                      <th className="py-3.5 px-4 w-16 text-center">Sr. No</th>
+                      <th className="py-3.5 px-4 min-w-[220px]">Question Text</th>
+                      <th className="py-3.5 px-4 min-w-[160px]">Response</th>
+                      <th className="py-3.5 px-4 min-w-[240px]">User Comments</th>
+                      <th className="py-3.5 px-4 w-32 text-center">Media / Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 font-medium">
+                    {QUESTION_DEFINITIONS[lang].map((item) => {
+                      const data = getRowData(item);
+                      const isGrievanceRating = data.answer === 'Could Be Better';
+                      const isExcellent = data.answer === 'Excellent' || data.answer === 'Excellent Service';
 
-                  const rating = String(stepData.rating || '');
-                  const comments = stepData.comments;
-                  const audioUrl = stepData.audioUrl;
-                  const imageUrl = stepData.imageUrl;
+                      let statusBadgeClass = "bg-slate-800 text-slate-300 border-slate-700";
+                      if (isExcellent) {
+                        statusBadgeClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold";
+                      } else if (isGrievanceRating) {
+                        statusBadgeClass = "bg-red-500/10 text-red-400 border-red-500/30 font-bold";
+                      } else if (data.answer === 'Acceptable' || data.answer === 'Acceptable standard') {
+                        statusBadgeClass = "bg-amber-500/10 text-amber-400 border-amber-500/30 font-bold";
+                      }
 
-                  let badgeColor = "bg-slate-800 text-slate-300 border-slate-700";
-                  if (rating === 'Excellent' || rating === 'Excellent Service') {
-                    badgeColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold";
-                  } else if (rating === 'Could Be Better') {
-                    badgeColor = "bg-red-500/10 text-red-400 border-red-500/30 font-bold";
-                  } else if (rating === 'Acceptable' || rating === 'Acceptable standard') {
-                    badgeColor = "bg-amber-500/10 text-amber-400 border-amber-500/30 font-bold";
-                  }
+                      return (
+                        <tr
+                          key={item.sr}
+                          className="hover:bg-slate-800/60 transition group relative"
+                        >
+                          {/* Sr. No */}
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-400">
+                            {item.sr}
+                          </td>
 
-                  return (
-                    <motion.div
-                      key={step.key}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, delay: step.sr * 0.04 }}
-                      className="bg-[#111827] border border-slate-800 rounded-2xl p-5 shadow-md space-y-3"
-                    >
-                      {/* Step Title & Rating Badge Header */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 flex items-center justify-center shrink-0">
-                            <Icon icon={step.icon} className="w-4.5 h-4.5" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-semibold text-white">
-                              {step.title[lang]}
-                            </h4>
-                          </div>
-                        </div>
+                          {/* Question Text */}
+                          <td className="py-3.5 px-4 text-slate-100 font-semibold leading-relaxed">
+                            {item.category && (
+                              <span className="block text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-0.5">
+                                {item.category}
+                              </span>
+                            )}
+                            <span>{item.text}</span>
+                          </td>
 
-                        {rating && (
-                          <span className={`px-3 py-1 rounded-xl border font-medium text-xs ${badgeColor} shrink-0`}>
-                            {rating}
-                          </span>
-                        )}
-                      </div>
+                          {/* Response */}
+                          <td className="py-3.5 px-4 font-bold">
+                            {item.isPersonal ? (
+                              <span className="text-slate-200 font-semibold">{data.answer}</span>
+                            ) : data.answer !== '-' ? (
+                              <span className={`inline-block px-3 py-1 rounded-xl border text-xs ${statusBadgeClass}`}>
+                                {data.answer}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">-</span>
+                            )}
+                          </td>
 
-                      {/* Patient Comments */}
-                      {comments && (
-                        <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-[11.5px] text-slate-300 italic flex items-start gap-2">
-                          <Icon icon="ph:quotes-bold" className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                          <span>{comments}</span>
-                        </div>
-                      )}
-
-                      {/* Embedded Audio Player for this specific Step */}
-                      {audioUrl && (
-                        <div className="pt-1">
-                          <AudioPlayerWidget
-                            audioUrl={audioUrl}
-                            title={`${step.title[lang]} - Voice Recording`}
-                            theme="amber"
-                            compact={false}
-                          />
-                        </div>
-                      )}
-
-                      {/* Embedded Photo Attachment for this specific Step */}
-                      {imageUrl && (
-                        <div className="pt-1 space-y-1.5">
-                          <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-                            <Icon icon="ph:image-bold" className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Uploaded Photo Evidence</span>
-                          </div>
-                          <div
-                            onClick={() => setActiveImagePreview(imageUrl)}
-                            className="relative h-32 w-48 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 cursor-pointer group shadow-sm"
+                          {/* User Comments (Line Clamp 2 & Hover Tooltip) */}
+                          <td
+                            className="py-3.5 px-4 text-slate-300 relative group/tooltip"
+                            onMouseEnter={() => setActiveTooltip(item.sr)}
+                            onMouseLeave={() => setActiveTooltip(null)}
                           >
-                            <img src={imageUrl} alt="Step Attachment" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                              <Icon icon="ph:arrows-out-bold" className="w-5 h-5 text-white" />
+                            {data.comments ? (
+                              <div className="line-clamp-2 leading-relaxed italic text-slate-300">
+                                "{data.comments}"
+                              </div>
+                            ) : (
+                              <span className="text-slate-500">-</span>
+                            )}
+
+                            {/* Full Comment Tooltip Popover on Hover */}
+                            {data.comments && activeTooltip === item.sr && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="absolute left-4 bottom-full mb-2 z-50 w-72 bg-slate-900 text-slate-100 text-xs p-3 rounded-xl border border-slate-700 shadow-2xl pointer-events-none"
+                              >
+                                <div className="font-bold text-amber-400 mb-1 flex items-center gap-1">
+                                  <Icon icon="ph:quotes-bold" className="w-3.5 h-3.5" />
+                                  <span>Full User Comment</span>
+                                </div>
+                                <p className="leading-relaxed font-normal">{data.comments}</p>
+                              </motion.div>
+                            )}
+                          </td>
+
+                          {/* Media / Action (Voice Audio & Photo Preview) */}
+                          <td className="py-3.5 px-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {/* Audio Player Widget */}
+                              {data.audioUrl && (
+                                <AudioPlayerWidget
+                                  audioUrl={data.audioUrl}
+                                  title={`Audio Note`}
+                                  theme="amber"
+                                  compact={true}
+                                />
+                              )}
+
+                              {/* Photo Preview Lightbox Trigger */}
+                              {data.imageUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveImagePreview(data.imageUrl)}
+                                  className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-sm"
+                                  title="View Uploaded Photo Evidence"
+                                >
+                                  <Icon icon="ph:image-bold" className="w-4 h-4" />
+                                  <span className="hidden sm:inline">View</span>
+                                </button>
+                              )}
+
+                              {!data.audioUrl && !data.imageUrl && (
+                                <span className="text-slate-600 text-xs">-</span>
+                              )}
                             </div>
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  );
-                })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -494,7 +574,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* LIGHTBOX FOR IMAGES */}
+        {/* POLISHED LIGHTBOX FOR IMAGES */}
         <AnimatePresence>
           {activeImagePreview && (
             <motion.div
@@ -504,15 +584,77 @@ export const UserFeedbackDetailModal: React.FC = () => {
               onClick={() => setActiveImagePreview(null)}
               className="fixed inset-0 z-60 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center p-4 cursor-pointer"
             >
-              <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl border border-slate-700 shadow-2xl">
-                <img src={activeImagePreview} alt="Evidence" className="max-w-full max-h-[85vh] object-contain" />
+              <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl border border-slate-700 shadow-2xl bg-slate-900 p-2">
+                <img src={activeImagePreview} alt="Evidence" className="max-w-full max-h-[82vh] object-contain rounded-xl" />
                 <button
                   onClick={() => setActiveImagePreview(null)}
-                  className="absolute top-4 right-4 p-2 rounded-full bg-slate-900/80 text-white hover:bg-slate-800 cursor-pointer"
+                  className="absolute top-4 right-4 p-2 rounded-full bg-slate-950/80 text-white hover:bg-slate-800 cursor-pointer shadow-lg"
                 >
                   <Icon icon="ph:x-bold" className="w-5 h-5" />
                 </button>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* MINOR RESOLUTION LOG SUBMITTED SUCCESS POPUP MODAL WITH MICRO-ANIMATIONS */}
+        <AnimatePresence>
+          {showSuccessModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.85, y: 15 }}
+                transition={{ type: "spring", damping: 22, stiffness: 280 }}
+                className="bg-[#111827] border border-amber-500/30 rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl z-50 relative overflow-hidden"
+              >
+                {/* Subtle Amber Glow Background Accent */}
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-32 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none" />
+
+                {/* Animated Green Checkmark Icon */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -45 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 16, delay: 0.1 }}
+                  className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-inner relative z-10"
+                >
+                  <Icon icon="ph:check-circle-bold" className="w-8 h-8 text-emerald-400" />
+                </motion.div>
+
+                <div className="relative z-10 space-y-1">
+                  <motion.h3
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="text-lg font-bold text-white tracking-wide"
+                  >
+                    Resolution Log Submitted!
+                  </motion.h3>
+                  <motion.p
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-xs text-slate-300 leading-relaxed"
+                  >
+                    CMO directive and resolution status update have been recorded into the history audit log.
+                  </motion.p>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  type="button"
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg transition cursor-pointer relative z-10"
+                >
+                  Done
+                </motion.button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
