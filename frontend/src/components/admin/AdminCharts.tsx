@@ -31,7 +31,7 @@ export const OverallScoreBifurcation: React.FC<{ filteredRecords: FeedbackRecord
     <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-          <Icon icon="ph:chart-bar-horizontal-fill" className="w-4 h-4 text-amber-400" />
+          <Icon icon="carbon:skill-level" className="w-4 h-4 text-amber-400" />
           <span>Overall Score Bifurcation</span>
         </h3>
         <span className="text-xs font-medium text-slate-400">

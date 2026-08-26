@@ -446,62 +446,65 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
 
       {/* MOBILE MENU NAV DRAWER */}
       <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-[#0F172A] border-b border-slate-800 p-3 space-y-1 md:hidden z-30"
-          >
-            {[
-              {
-                id: "dashboard",
-                label: "Dashboard",
-                icon: "ph:grid-four-bold",
-              },
-              {
-                id: "feedbacks",
-                label: "Feedbacks",
-                icon: "ph:list-bullets-bold",
-              },
-              {
-                id: "reports",
-                label: "Reports & Export",
-                icon: "ph:file-text-bold",
-              },
-              {
-                id: "notifications",
-                label: "Notifications",
-                icon: "clarity:notification-outline-badged",
-              },
-              {
-                id: "logout",
-                label: "Logout",
-                icon: "ph:sign-out-bold",
-              },
-            ].map((nav) => (
-              <button
-                key={nav.id}
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  if (nav.id === "logout") {
-                    setShowLogoutModal(true);
-                  } else {
-                    setActiveTab(nav.id as MainNavTab);
-                  }
-                }}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 transition ${
-                  activeTab === nav.id
-                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold"
-                    : "text-slate-300 hover:bg-slate-800"
-                }`}
-              >
-                <Icon icon={nav.icon} className="w-4 h-4" />
-                <span>{nav.label}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
+     {mobileMenuOpen && (
+  <motion.div
+    initial={{ opacity: 0, height: 0 }}
+    animate={{ opacity: 1, height: "auto" }}
+    exit={{ opacity: 0, height: 0 }}
+    className="bg-[#0F172A] border-b border-slate-800 p-3 space-y-1 md:hidden z-30"
+  >
+    {[
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: "ph:grid-four-bold",
+      },
+      {
+        id: "feedbacks",
+        label: "Feedbacks",
+        icon: "ph:list-bullets-bold",
+      },
+      {
+        id: "reports",
+        label: "Reports & Export",
+        icon: "ph:file-text-bold",
+      },
+      {
+        id: "notifications",
+        label: "Notifications",
+        icon: "clarity:notification-outline-badged",
+      },
+      {
+        id: "logout",
+        label: "Logout",
+        icon: "ph:sign-out-bold",
+      },
+    ].map((nav) => (
+      <button
+        key={nav.id}
+        onClick={() => {
+          setMobileMenuOpen(false);
+
+          if (nav.id === "logout") {
+            setShowLogoutModal(true);
+          } else {
+            setActiveTab(nav.id as MainNavTab);
+          }
+        }}
+        className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 transition ${
+          nav.id === "logout"
+            ? "text-red-500 hover:bg-red-500/10"
+            : activeTab === nav.id
+              ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold"
+              : "text-slate-300 hover:bg-slate-800"
+        }`}
+      >
+        <Icon icon={nav.icon} className="w-4 h-4" />
+        <span>{nav.label}</span>
+      </button>
+    ))}
+  </motion.div>
+)}
       </AnimatePresence>
 
       {/* LOGOUT CONFIRMATION MODAL */}
@@ -516,7 +519,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               className="bg-[#111827] border border-slate-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl z-50"
             >
               <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center mx-auto">
-                <Icon icon="ph:sign-out-bold" className="w-6 h-6 text-red-400" />
+                <Icon
+                  icon="ph:sign-out-bold"
+                  className="w-6 h-6 text-red-400"
+                />
               </div>
 
               <div>
@@ -524,7 +530,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   Are you sure to logout?
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  You will be logged out of your admin session and redirected to login.
+                  You will be logged out of your admin session and redirected to
+                  login.
                 </p>
               </div>
 
@@ -688,30 +695,29 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   metrics
                 </p>
               </div>
-
-              {/* Overview vs Analysis Toggle */}
-              <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
-                <button
-                  onClick={() => setDashSubTab("overview")}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    dashSubTab === "overview"
-                      ? "bg-amber-500 text-slate-950 shadow-sm"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  Executive Overview
-                </button>
-                <button
-                  onClick={() => setDashSubTab("analysis")}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    dashSubTab === "analysis"
-                      ? "bg-amber-500 text-slate-950 shadow-sm"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  Analysis
-                </button>
-              </div>
+            </div>
+            {/* Overview vs Analysis Toggle */}
+            <div className="flex items-center w-1/2 mx-auto bg-slate-900 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
+              <button
+                onClick={() => setDashSubTab("overview")}
+                className={`w-1/2 px-4 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer ${
+                  dashSubTab === "overview"
+                    ? "bg-amber-500 text-slate-950 shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Executive Overview
+              </button>
+              <button
+                onClick={() => setDashSubTab("analysis")}
+                className={`w-1/2 px-4 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer ${
+                  dashSubTab === "analysis"
+                    ? "bg-amber-500 text-slate-950 shadow-sm"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Analysis
+              </button>
             </div>
 
             {/* DASHBOARD CHARTS CONTENT */}
@@ -1154,8 +1160,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               <div>
                 <div className="text-xs text-slate-400 font-medium flex items-center gap-1">
                   <span>Dashboard</span>
-                  <Icon icon="ph:caret-right-bold" className="w-3 h-3 text-slate-600" />
-                  <span className="text-amber-400 font-semibold">Notifications</span>
+                  <Icon
+                    icon="ph:caret-right-bold"
+                    className="w-3 h-3 text-slate-600"
+                  />
+                  <span className="text-amber-400 font-semibold">
+                    Notifications
+                  </span>
                 </div>
 
                 <div className="mt-3 bg-[#111827]/90 border border-slate-800 rounded-2xl px-6 py-4 shadow-lg inline-block">
@@ -1185,14 +1196,24 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
               <div className="bg-[#1f293d] border-b border-slate-700/80 px-5 py-3 grid grid-cols-12 gap-3 text-xs font-semibold text-slate-300 uppercase tracking-wider items-center">
                 <div className="col-span-1">Sr. No</div>
                 <div className="col-span-8 sm:col-span-9">Name</div>
-                <div className="col-span-2 sm:col-span-1 text-center">Action</div>
+                <div className="col-span-2 sm:col-span-1 text-center">
+                  Action
+                </div>
                 <div className="col-span-1 text-right">
                   <input
                     type="checkbox"
-                    checked={notifications.length > 0 && notifications.every((n) => n.checked)}
+                    checked={
+                      notifications.length > 0 &&
+                      notifications.every((n) => n.checked)
+                    }
                     onChange={(e) => {
                       const checkedAll = e.target.checked;
-                      setNotifications(notifications.map((n) => ({ ...n, checked: checkedAll })));
+                      setNotifications(
+                        notifications.map((n) => ({
+                          ...n,
+                          checked: checkedAll,
+                        })),
+                      );
                     }}
                     className="w-4 h-4 rounded border-slate-700 accent-amber-500 cursor-pointer"
                   />
@@ -1210,7 +1231,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                     <div
                       key={notif.id}
                       className={`px-5 py-4 grid grid-cols-12 gap-3 text-xs items-center transition ${
-                        notif.checked ? "bg-amber-500/5" : "hover:bg-slate-800/50"
+                        notif.checked
+                          ? "bg-amber-500/5"
+                          : "hover:bg-slate-800/50"
                       }`}
                     >
                       {/* Sr. No */}
@@ -1229,7 +1252,9 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                           onClick={() => {
                             dispatch(openDetailModal(notif.record));
                             // Mark as seen / remove from notification list
-                            setNotifications(notifications.filter((n) => n.id !== notif.id));
+                            setNotifications(
+                              notifications.filter((n) => n.id !== notif.id),
+                            );
                           }}
                           className="px-3.5 py-1.5 rounded-lg border border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-950 font-bold text-xs transition cursor-pointer whitespace-nowrap shadow-sm"
                         >
@@ -1246,8 +1271,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                             const checkedVal = e.target.checked;
                             setNotifications(
                               notifications.map((n) =>
-                                n.id === notif.id ? { ...n, checked: checkedVal } : n
-                              )
+                                n.id === notif.id
+                                  ? { ...n, checked: checkedVal }
+                                  : n,
+                              ),
                             );
                           }}
                           className="w-4 h-4 rounded border-slate-700 accent-amber-500 cursor-pointer"
@@ -1265,7 +1292,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 <span className="text-red-500 text-sm">ViTRIC</span>
               </div>
               <div>
-                © Insight is a Copyright to Vitric Business Solutions Pvt. Ltd. 2016 - Present. All rights reserved.
+                © Insight is a Copyright to Vitric Business Solutions Pvt. Ltd.
+                2016 - Present. All rights reserved.
               </div>
             </div>
           </motion.div>

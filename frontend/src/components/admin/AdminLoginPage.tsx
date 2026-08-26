@@ -164,7 +164,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 pl-1">
+                <label className="block text-xs font-bold text-slate-500 tracking-wider mb-1.5 pl-1">
                   Official Email Address
                 </label>
                 <div className="relative">
@@ -184,8 +184,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 pl-1">
-                  Access Key / Password
+                <label className="block text-xs font-bold text-slate-500  tracking-wider mb-1.5 pl-1">
+                  Password
                 </label>
                 <div className="relative">
                   <input

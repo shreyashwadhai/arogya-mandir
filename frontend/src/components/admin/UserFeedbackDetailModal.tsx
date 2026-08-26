@@ -11,48 +11,44 @@ type LanguageMode = 'english' | 'hindi' | 'gujarati' | 'marathi';
 
 const QUESTION_DEFINITIONS = {
   english: [
-    { sr: 1, text: "I am", key: "visitorType", isPersonal: true },
-    { sr: 2, text: "Name of Patient/Visitor?", key: "patientName", isPersonal: true },
-    { sr: 3, text: "AADHAAR Number / ECHS Health Card / ABHA Number", key: "aadhaarMasked", isPersonal: true },
-    { sr: 4, text: "Mobile Number (+91)", key: "mobileNumber", isPersonal: true },
-    { sr: 5, category: "Medical Care & Doctors", text: "How was your Doctor Consultation Experience?", key: "doctor" },
-    { sr: 6, category: "Pharmacy Dispensary", text: "How was your Pharmacy / Medicine Counter Experience?", key: "pharmacy" },
-    { sr: 7, category: "Medicine Availability", text: "Were all your Prescribed Medicines available free of cost?", key: "medicineAvailability" },
-    { sr: 8, category: "Hospital Cleanliness", text: "How was the Cleanliness & Sanitation of the Facility?", key: "cleanliness" },
-    { sr: 9, category: "Feedback & Grievance", text: "Any Suggestions, Grievance or Additional Comments?", key: "suggestions" },
+    { sr: 1, text: "Name of Patient/Visitor?", key: "patientName", isPersonal: true },
+    { sr: 2, text: "AADHAAR Number / ECHS Health Card / ABHA Number", key: "aadhaarMasked", isPersonal: true },
+    { sr: 3, text: "Mobile Number (+91)", key: "mobileNumber", isPersonal: true },
+    { sr: 4, category: "Medical Care & Doctors", text: "How was your Doctor Consultation Experience?", key: "doctor" },
+    { sr: 5, category: "Pharmacy Dispensary", text: "How was your Pharmacy / Medicine Counter Experience?", key: "pharmacy" },
+    { sr: 6, category: "Medicine Availability", text: "Were all your Prescribed Medicines available free of cost?", key: "medicineAvailability" },
+    { sr: 7, category: "Hospital Cleanliness", text: "How was the Cleanliness & Sanitation of the Facility?", key: "cleanliness" },
+    { sr: 8, category: "Feedback & Grievance", text: "Any Suggestions, Grievance or Additional Comments?", key: "suggestions" },
   ],
   hindi: [
-    { sr: 1, text: "मैं हूँ", key: "visitorType", isPersonal: true },
-    { sr: 2, text: "मरीज़ / आगंतुक का नाम?", key: "patientName", isPersonal: true },
-    { sr: 3, text: "ईसीएचएस कार्ड / आभा नंबर", key: "aadhaarMasked", isPersonal: true },
-    { sr: 4, text: "मोबाइल नंबर (+91)", key: "mobileNumber", isPersonal: true },
-    { sr: 5, category: "चिकित्सा देखभाल एवं डॉक्टर", text: "आपका डॉक्टर परामर्श अनुभव कैसा रहा?", key: "doctor" },
-    { sr: 6, category: "फार्मेसी वितरण", text: "आपका फार्मेसी / दवा काउंटर अनुभव कैसा रहा?", key: "pharmacy" },
-    { sr: 7, category: "दवा उपलब्धता", text: "क्या आपकी सभी निर्धारित दवाएं मुफ्त उपलब्ध थीं?", key: "medicineAvailability" },
-    { sr: 8, category: "अस्पताल स्वच्छता", text: "सुविधा की स्वच्छता और सफाई कैसी थी?", key: "cleanliness" },
-    { sr: 9, category: "सुझाव एवं शिकायत", text: "कोई सुझाव, शिकायत या अतिरिक्त टिप्पणी?", key: "suggestions" },
+    { sr: 1, text: "मरीज़ / आगंतुक का नाम?", key: "patientName", isPersonal: true },
+    { sr: 2, text: "आधार नंबर / ईसीएचएस कार्ड / आभा नंबर", key: "aadhaarMasked", isPersonal: true },
+    { sr: 3, text: "मोबाइल नंबर (+91)", key: "mobileNumber", isPersonal: true },
+    { sr: 4, category: "चिकित्सा देखभाल एवं डॉक्टर", text: "आपका डॉक्टर परामर्श अनुभव कैसा रहा?", key: "doctor" },
+    { sr: 5, category: "फार्मेसी वितरण", text: "आपका फार्मेसी / दवा काउंटर अनुभव कैसा रहा?", key: "pharmacy" },
+    { sr: 6, category: "दवा उपलब्धता", text: "क्या आपकी सभी निर्धारित दवाएं मुफ्त उपलब्ध थीं?", key: "medicineAvailability" },
+    { sr: 7, category: "अस्पताल स्वच्छता", text: "सुविधा की स्वच्छता और सफाई कैसी थी?", key: "cleanliness" },
+    { sr: 8, category: "सुझाव एवं शिकायत", text: "कोई सुझाव, शिकायत या अतिरिक्त टिप्पणी?", key: "suggestions" },
   ],
   gujarati: [
-    { sr: 1, text: "હું છું", key: "visitorType", isPersonal: true },
-    { sr: 2, text: "દર્દી / મુલાકાતીનું નામ?", key: "patientName", isPersonal: true },
-    { sr: 3, text: "ECHS હેલ્થ કાર્ડ / આભા નંબર", key: "aadhaarMasked", isPersonal: true },
-    { sr: 4, text: "મોબાઇલ નંબર (+91)", key: "mobileNumber", isPersonal: true },
-    { sr: 5, category: "તબીબી સંભાળ અને તબીબો", text: "તમારો ડૉક્ટર પરામર્શ અનુભવ કેવો રહ્યો?", key: "doctor" },
-    { sr: 6, category: "ફાર્મસી કાઉન્ટર", text: "તમારો ફાર્મસી / દવા કાઉન્ટર અનુભવ કેવો રહ્યો?", key: "pharmacy" },
-    { sr: 7, category: "દવાની ઉપલબ્ધતા", text: "શું તમારી બધી નિયત દવાઓ મફત ઉપલબ્ધ હતી?", key: "medicineAvailability" },
-    { sr: 8, category: "હોસ્પિટલ સ્વચ્છતા", text: "સુવિધાઓની સફાઈ અને શૌચાલય સ્વચ્છતા કેવી હતી?", key: "cleanliness" },
-    { sr: 9, category: "સૂચનો અને ફરિયાદો", text: "કોઈ સૂચનો, ફરિયાદ અથવા વધારાની ટિપ્પણીઓ?", key: "suggestions" },
+    { sr: 1, text: "દર્દી / મુલાકાતીનું નામ?", key: "patientName", isPersonal: true },
+    { sr: 2, text: "આધાર નંબર / ECHS હેલ્થ કાર્ડ / આભા નંબર", key: "aadhaarMasked", isPersonal: true },
+    { sr: 3, text: "મોબાઇલ નંબર (+91)", key: "mobileNumber", isPersonal: true },
+    { sr: 4, category: "તબીબી સંભાળ અને તબીબો", text: "તમારો ડૉક્ટર પરામર્શ અનુભવ કેવો રહ્યો?", key: "doctor" },
+    { sr: 5, category: "ફાર્મસી કાઉન્ટર", text: "તમારો ફાર્મસી / દવા કાઉન્ટર અનુભવ કેવો રહ્યો?", key: "pharmacy" },
+    { sr: 6, category: "દવાની ઉપલબ્ધતા", text: "શું તમારી બધી નિયત દવાઓ મફત ઉપલબ્ધ હતી?", key: "medicineAvailability" },
+    { sr: 7, category: "હોસ્પિટલ સ્વચ્છતા", text: "સુવિધાઓની સફાઈ અને શૌચાલય સ્વચ્છતા કેવી હતી?", key: "cleanliness" },
+    { sr: 8, category: "સૂચનો અને ફરિયાદો", text: "કોઈ સૂચનો, ફરિયાદ અથવા વધારાની ટિપ્પણીઓ?", key: "suggestions" },
   ],
   marathi: [
-    { sr: 1, text: "मी आहे", key: "visitorType", isPersonal: true },
-    { sr: 2, text: "रुग्णाचे / भेट देणाऱ्याचे नाव?", key: "patientName", isPersonal: true },
-    { sr: 3, text: "ECHS हेल्थ कार्ड / आभा क्रमांक", key: "aadhaarMasked", isPersonal: true },
-    { sr: 4, text: "मोबाईल नंबर (+91)", key: "mobileNumber", isPersonal: true },
-    { sr: 5, category: "वैद्यकीय काळजी व डॉक्टर", text: "तुमचा डॉक्टर सल्ला अनुभव कसा होता?", key: "doctor" },
-    { sr: 6, category: "फार्मसी काउंटर", text: "तुमचा फार्मसी / औषध काउंटर अनुभव कसा होता?", key: "pharmacy" },
-    { sr: 7, category: "औषध उपलब्धता", text: "तुमची सर्व औषधे मोफत उपलब्ध होती का?", key: "medicineAvailability" },
-    { sr: 8, category: "रुग्णालय स्वच्छता", text: "सुविधेची स्वच्छता व स्वच्छतागृह स्वच्छता कशी होती?", key: "cleanliness" },
-    { sr: 9, category: "सूचना व तक्रारी", text: "काही सूचना, तक्रारी किंवा अतिरिक्त टिप्पण्या?", key: "suggestions" },
+    { sr: 1, text: "रुग्णाचे / भेट देणाऱ्याचे नाव?", key: "patientName", isPersonal: true },
+    { sr: 2, text: "आधार क्रमांक / ECHS हेल्थ कार्ड / आभा क्रमांक", key: "aadhaarMasked", isPersonal: true },
+    { sr: 3, text: "मोबाईल नंबर (+91)", key: "mobileNumber", isPersonal: true },
+    { sr: 4, category: "वैद्यकीय काळजी व डॉक्टर", text: "तुमचा डॉक्टर सल्ला अनुभव कसा होता?", key: "doctor" },
+    { sr: 5, category: "फार्मसी काउंटर", text: "तुमचा फार्मसी / औषध काउंटर अनुभव कसा होता?", key: "pharmacy" },
+    { sr: 6, category: "औषध उपलब्धता", text: "तुमची सर्व औषधे मोफत उपलब्ध होती का?", key: "medicineAvailability" },
+    { sr: 7, category: "रुग्णालय स्वच्छता", text: "सुविधेची स्वच्छता व स्वच्छतागृह स्वच्छता कशी होती?", key: "cleanliness" },
+    { sr: 8, category: "सूचना व तक्रारी", text: "काही सूचना, तक्रारी किंवा अतिरिक्त टिप्पण्या?", key: "suggestions" },
   ],
 };
 
@@ -136,13 +132,6 @@ export const UserFeedbackDetailModal: React.FC = () => {
 
   const getRowData = (item: any) => {
     switch (item.key) {
-      case 'visitorType':
-        return {
-          answer: selectedRecord.visitorType || 'ESM/Spouse',
-          comments: null,
-          audioUrl: null,
-          imageUrl: null,
-        };
       case 'patientName':
         return {
           answer: selectedRecord.patientName,
@@ -180,8 +169,8 @@ export const UserFeedbackDetailModal: React.FC = () => {
         };
       case 'medicineAvailability':
         return {
-          answer: selectedRecord.pharmacy?.rating === 'Could Be Better' ? 'Could Be Better' : 'Yes (100% Free)',
-          comments: selectedRecord.pharmacy?.comments || 'All prescribed medicines available free of cost.',
+          answer: selectedRecord.pharmacy?.rating === 'Could Be Better' ? 'Could Be Better' : 'Skip',
+          comments: selectedRecord.pharmacy?.rating === 'Could Be Better' ? selectedRecord.pharmacy?.comments || null : null,
           audioUrl: null,
           imageUrl: null,
         };
@@ -194,7 +183,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
         };
       case 'suggestions':
         return {
-          answer: selectedRecord.suggestions?.text ? 'Provided' : '-',
+          answer: selectedRecord.suggestions?.text || selectedRecord.suggestions?.audioUrl || selectedRecord.suggestions?.imageUrl ? 'Image' : '-',
           comments: selectedRecord.suggestions?.text || null,
           audioUrl: selectedRecord.suggestions?.audioUrl || null,
           imageUrl: selectedRecord.suggestions?.imageUrl || null,
@@ -284,7 +273,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
 
               <div>
                 <span className="text-slate-400">Overall Rating Score</span>
-                <div className={`font-bold text-sm uppercase mt-0.5 ${
+                <div className={`font-extrabold text-sm uppercase mt-0.5 ${
                   String(selectedRecord.responseType || selectedRecord.overallRating) === 'Could Be Better'
                     ? 'text-red-400'
                     : 'text-emerald-400'
@@ -309,7 +298,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
 
                 {/* Language Switcher Tabs */}
                 <div className="flex items-center gap-1.5">
-                  {(['english', 'hindi', 'marathi','gujarati'] as LanguageMode[]).map((m) => (
+                  {(['english', 'hindi', 'marathi', 'gujarati'] as LanguageMode[]).map((m) => (
                     <button
                       key={m}
                       onClick={() => setLang(m)}
@@ -333,8 +322,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
                       <th className="py-3.5 px-4 w-16 text-center">Sr. No</th>
                       <th className="py-3.5 px-4 min-w-[220px]">Question Text</th>
                       <th className="py-3.5 px-4 min-w-[160px]">Response</th>
-                      <th className="py-3.5 px-4 min-w-[240px]">User Comments</th>
-                      <th className="py-3.5 px-4 w-32 text-center">Media / Action</th>
+                      <th className="py-3.5 px-4 min-w-[320px]">User Comments & Grievance Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800 font-medium">
@@ -342,6 +330,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
                       const data = getRowData(item);
                       const isGrievanceRating = data.answer === 'Could Be Better';
                       const isExcellent = data.answer === 'Excellent' || data.answer === 'Excellent Service';
+                      const isGrievanceOrSuggestion = isGrievanceRating || item.key === 'suggestions';
 
                       let statusBadgeClass = "bg-slate-800 text-slate-300 border-slate-700";
                       if (isExcellent) {
@@ -385,66 +374,68 @@ export const UserFeedbackDetailModal: React.FC = () => {
                             )}
                           </td>
 
-                          {/* User Comments (Line Clamp 2 & Hover Tooltip) */}
+                          {/* MERGED COLUMN: User Comments, Voice Note & Uploaded Image */}
                           <td
                             className="py-3.5 px-4 text-slate-300 relative group/tooltip"
                             onMouseEnter={() => setActiveTooltip(item.sr)}
                             onMouseLeave={() => setActiveTooltip(null)}
                           >
-                            {data.comments ? (
-                              <div className="line-clamp-2 leading-relaxed italic text-slate-300">
-                                "{data.comments}"
+                            {isGrievanceOrSuggestion && (data.comments || data.audioUrl || data.imageUrl) ? (
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                {/* 1. Text Comment */}
+                                {data.comments && (
+                                  <div className="flex-1 min-w-0">
+                                    <div className="line-clamp-2 leading-relaxed italic text-slate-300">
+                                      "{data.comments}"
+                                    </div>
+
+                                    {/* Full Comment Tooltip Popover on Hover */}
+                                    {activeTooltip === item.sr && (
+                                      <motion.div
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="absolute left-4 bottom-full mb-2 z-50 w-72 bg-slate-900 text-slate-100 text-xs p-3 rounded-xl border border-slate-700 shadow-2xl pointer-events-none"
+                                      >
+                                        <div className="font-bold text-amber-400 mb-1 flex items-center gap-1">
+                                          <Icon icon="ph:quotes-bold" className="w-3.5 h-3.5" />
+                                          <span>Full User Comment</span>
+                                        </div>
+                                        <p className="leading-relaxed font-normal">{data.comments}</p>
+                                      </motion.div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* 2. Voice Note Audio Widget */}
+                                {data.audioUrl && (
+                                  <div className="shrink-0">
+                                    <AudioPlayerWidget
+                                      audioUrl={data.audioUrl}
+                                      title="Voice Note"
+                                      theme="amber"
+                                      compact={true}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* 3. Photo Evidence Lightbox Trigger */}
+                                {data.imageUrl && (
+                                  <div className="shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveImagePreview(data.imageUrl)}
+                                      className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                                      title="View Uploaded Photo Evidence"
+                                    >
+                                      <Icon icon="ph:image-bold" className="w-4 h-4 text-amber-400" />
+                                      <span>View Photo</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             ) : (
-                              <span className="text-slate-500">-</span>
+                              <span className="text-slate-600 text-xs">-</span>
                             )}
-
-                            {/* Full Comment Tooltip Popover on Hover */}
-                            {data.comments && activeTooltip === item.sr && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="absolute left-4 bottom-full mb-2 z-50 w-72 bg-slate-900 text-slate-100 text-xs p-3 rounded-xl border border-slate-700 shadow-2xl pointer-events-none"
-                              >
-                                <div className="font-bold text-amber-400 mb-1 flex items-center gap-1">
-                                  <Icon icon="ph:quotes-bold" className="w-3.5 h-3.5" />
-                                  <span>Full User Comment</span>
-                                </div>
-                                <p className="leading-relaxed font-normal">{data.comments}</p>
-                              </motion.div>
-                            )}
-                          </td>
-
-                          {/* Media / Action (Voice Audio & Photo Preview) */}
-                          <td className="py-3.5 px-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              {/* Audio Player Widget */}
-                              {data.audioUrl && (
-                                <AudioPlayerWidget
-                                  audioUrl={data.audioUrl}
-                                  title={`Audio Note`}
-                                  theme="amber"
-                                  compact={true}
-                                />
-                              )}
-
-                              {/* Photo Preview Lightbox Trigger */}
-                              {data.imageUrl && (
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveImagePreview(data.imageUrl)}
-                                  className="p-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-sm"
-                                  title="View Uploaded Photo Evidence"
-                                >
-                                  <Icon icon="ph:image-bold" className="w-4 h-4" />
-                                  <span className="hidden sm:inline">View</span>
-                                </button>
-                              )}
-
-                              {!data.audioUrl && !data.imageUrl && (
-                                <span className="text-slate-600 text-xs">-</span>
-                              )}
-                            </div>
                           </td>
                         </tr>
                       );
@@ -463,12 +454,12 @@ export const UserFeedbackDetailModal: React.FC = () => {
                   </div>
                   <span className="text-sm font-bold text-white">CMO Resolution & Action Desk</span>
                 </div>
-                <span className="text-xs text-slate-400">Officer: CMO Rajkot</span>
+                {/* <span className="text-xs text-slate-400">Officer: CMO Rajkot</span> */}
               </div>
 
               <form onSubmit={handleUpdateStatus} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
+                  {/* <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Status Update</label>
                     <select
                       value={newStatus}
@@ -480,12 +471,12 @@ export const UserFeedbackDetailModal: React.FC = () => {
                       <option value="Logged & Verified">Logged & Verified</option>
                       <option value="Resolved">Resolved</option>
                     </select>
-                  </div>
+                  </div> */}
 
-                  <div className="sm:col-span-2">
+                  <div className="sm:col-span-3">
                     <label className="block text-xs font-semibold text-slate-400 mb-1">Text Remark / Directive</label>
-                    <input
-                      type="text"
+                    <textarea
+                      rows={4}
                       value={officerNote}
                       onChange={(e) => setOfficerNote(e.target.value)}
                       placeholder="Type resolution remark or instructions..."
@@ -554,7 +545,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
               </form>
 
               {/* Historical Notes Audit Trail */}
-              {selectedRecord.officerNotes && selectedRecord.officerNotes.length > 0 && (
+              {/* {selectedRecord.officerNotes && selectedRecord.officerNotes.length > 0 && (
                 <div className="border-t border-slate-800 pt-3 space-y-2">
                   <span className="text-xs font-semibold text-slate-400">Resolution History Log</span>
                   <div className="space-y-2 max-h-36 overflow-y-auto">
@@ -569,7 +560,7 @@ export const UserFeedbackDetailModal: React.FC = () => {
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </motion.div>
