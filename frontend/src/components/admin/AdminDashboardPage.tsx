@@ -1,949 +1,1159 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../redux/store";
-import {
-  logoutAdmin,
-  setSearchQuery,
-  setRatingFilter,
-  setMediaFilter,
-  setStatusFilter,
-  openDetailModal,
-  updateRecordStatus,
-} from "../../redux/features/adminSlice";
+import { logoutAdmin, openDetailModal } from "../../redux/features/adminSlice";
 import {
   AdminCharts,
-  MonthOnMonthScoreChart,
+  OverallScoreBifurcation,
+  SolvedVsUnsolvedDonutChart,
   WeekOnWeekAreaChart,
+  ActiveMandirsBarChart,
+  FeedbackScoreMeter,
 } from "./AdminCharts";
+import { Cmo1ResponseChart } from "./Cmo1ResponseChart";
 import { UserFeedbackDetailModal } from "./UserFeedbackDetailModal";
+import { KeyInsightsTab } from "./KeyInsightsTab";
+import { PerformanceSummaryView } from "./PerformanceSummaryView";
+import { SuperAdminDashboard } from "./SuperAdminDashboard";
+import { CmoAnalysisView } from "./CmoAnalysisView";
 import { exportToCSV, exportToPDF } from "./exportUtils";
 import { Icon } from "@iconify/react";
 import { motion, AnimatePresence } from "framer-motion";
-import cmoAvatar from "../../assets/cmo_avatar.jpg";
-import { DUMMY_FEEDBACK_RECORDS, type FeedbackRecord } from "./dummyData";
+import type {
+  FeedbackRecord,
+  CmoUser,
+  ArogyaCentre,
+  NotificationItem,
+} from "../../types/cmoTypes";
+import { StorageService } from "../../services/storageService";
+import { AuthService } from "../../services/authService";
 
 interface AdminDashboardPageProps {
   onBackToPatientForm: () => void;
 }
 
-type MainNavTab = "dashboard" | "feedbacks" | "reports" | "notifications";
-type DashboardSubTab = "overview" | "analysis";
-
-interface NotificationItem {
-  id: string;
-  srNo: number;
-  message: string;
-  record: FeedbackRecord;
-  checked: boolean;
-}
+type TabType =
+  | "overview"
+  | "insights"
+  | "analysis"
+  | "feedbacks"
+  | "admin_panel";
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   onBackToPatientForm,
 }) => {
   const dispatch = useDispatch();
-  const records = useSelector((state: RootState) => state.admin.records);
-  const searchQuery = useSelector(
-    (state: RootState) => state.admin.searchQuery,
-  );
-  const ratingFilter = useSelector(
-    (state: RootState) => state.admin.ratingFilter,
-  );
-  const statusFilter = useSelector(
-    (state: RootState) => state.admin.statusFilter,
-  );
-  const mediaFilter = useSelector(
-    (state: RootState) => state.admin.mediaFilter,
-  );
 
-  // Navigation state
-  const [activeTab, setActiveTab] = useState<MainNavTab>("dashboard");
-  const [dashSubTab, setDashSubTab] = useState<DashboardSubTab>("overview");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Active User Session & Data Layer
+  const [activeUser, setActiveUser] = useState<CmoUser | null>(null);
+  const [cmos, setCmos] = useState<CmoUser[]>([]);
+  const [centres, setCentres] = useState<ArogyaCentre[]>([]);
+  const [records, setRecords] = useState<FeedbackRecord[]>([]);
 
-  // Logout Modal State
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  // Navigation State
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [selectedPerformanceCentre, setSelectedPerformanceCentre] =
+    useState<ArogyaCentre | null>(null);
 
-  // Grievance Toggle State
-  const [showGrievancesOnly, setShowGrievancesOnly] = useState<boolean>(false);
+  // Notification Panel Dropdown State
+  const [showNotificationsDropdown, setShowNotificationsDropdown] =
+    useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
-  // Filters State
-  const [selectedYear, setSelectedYear] = useState<string>("ALL");
-  const [selectedMonth, setSelectedMonth] = useState<string>("ALL");
-  const [selectedDate, setSelectedDate] = useState<string>("");
-  const [selectedClinic, setSelectedClinic] = useState<string>("ALL");
-  const [selectedStationHq, setSelectedStationHq] = useState<string>("ALL");
-  const [selectedResponseType, setSelectedResponseType] =
+  // Filter Bar State for Feedback Tab
+  const [selectedCmo2Filter, setSelectedCmo2Filter] = useState<string>("ALL");
+  const [selectedCmo1Filter, setSelectedCmo1Filter] = useState<string>("ALL");
+  const [selectedResponseFilter, setSelectedResponseFilter] =
     useState<string>("ALL");
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>("ALL");
+  const [selectedYearFilter, setSelectedYearFilter] = useState<string>("ALL");
 
-  // Notifications State (Matching Image 1)
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: "notif-1",
-      srNo: 1,
-      message:
-        "The Feedback from qeqweeqw with concerns No. COK/PC/KNM/2026/8/25-01 is unsatisfactory from Kunnamkulam Polyclinic on date 2026-08-25 Please go through the detailed feedback.",
-      record: DUMMY_FEEDBACK_RECORDS[0],
-      checked: false,
-    },
-    {
-      id: "notif-2",
-      srNo: 2,
-      message:
-        "The Feedback from Hav Subhash Kumar with concerns No. JAM/PC/RAJ/2026/8/24-03 is unsatisfactory from Rajkot Polyclinic on date 2026-08-24 Please go through the detailed feedback.",
-      record: DUMMY_FEEDBACK_RECORDS[1],
-      checked: false,
-    },
-    {
-      id: "notif-3",
-      srNo: 3,
-      message:
-        "The Feedback from Smt. Manjula Patel with concerns No. JAM/PC/RAJ/2026/8/22-08 is unsatisfactory from Rajkot Polyclinic on date 2026-08-22 Please go through the detailed feedback.",
-      record: DUMMY_FEEDBACK_RECORDS[2],
-      checked: false,
-    },
-  ]);
-
-  // Notifications & Toast State
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Pagination for Feedbacks Table
+  // Pagination for Feedback Tab
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 5;
+  const [manualPageInput, setManualPageInput] = useState<string>("");
+  const itemsPerPage = 7;
+
+  // Toast Notice State
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Toggle Grievance Filter button handler
-  const handleToggleGrievances = () => {
-    if (showGrievancesOnly) {
-      setShowGrievancesOnly(false);
-      setSelectedResponseType("ALL");
-      showToast("Showing All Feedbacks");
-    } else {
-      setShowGrievancesOnly(true);
-      setSelectedResponseType("Could Be Better");
-      showToast("Showing Grievances Only");
+  const loadData = () => {
+    const user = AuthService.getActiveUser();
+    setActiveUser(user);
+
+    const allCmos = StorageService.getCmos();
+    setCmos(allCmos);
+
+    const allCentres = StorageService.getCentres();
+    setCentres(allCentres);
+
+    const allFbs = StorageService.getFeedbacks();
+    setRecords(allFbs);
+
+    if (user) {
+      const userNotifs = StorageService.getNotifications(user.id);
+      setNotifications(userNotifs);
     }
   };
 
-  // Mark Selected / All Notifications as Seen
-  const handleMarkAsSeen = () => {
-    const checkedItems = notifications.filter((n) => n.checked);
-    if (checkedItems.length > 0) {
-      setNotifications(notifications.filter((n) => !n.checked));
-      showToast(`${checkedItems.length} Notification(s) marked as seen`);
-    } else {
-      setNotifications([]);
-      showToast("All Notifications marked as seen");
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Scoped records according to CMO hierarchy access model
+  const scopedRecords = useMemo(() => {
+    if (!activeUser) return [];
+
+    if (activeUser.role === "SUPER_ADMIN" || activeUser.role === "CMO_3") {
+      return records;
     }
-  };
 
-  // Filter Logic
-  const filteredRecords = useMemo(() => {
-    return records.filter((r) => {
-      // Search
-      const matchesSearch =
-        !searchQuery ||
-        r.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.trackingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.mobileNumber.includes(searchQuery) ||
-        (r.clinicName &&
-          r.clinicName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (r.facilityName &&
-          r.facilityName.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      // Year
-      const matchesYear = selectedYear === "ALL" || r.year === selectedYear;
-
-      // Month
-      const matchesMonth = selectedMonth === "ALL" || r.month === selectedMonth;
-
-      // Date Exact
-      const matchesDate =
-        !selectedDate || (r.date && r.date.includes(selectedDate));
-
-      // Clinic Name
-      const matchesClinic =
-        selectedClinic === "ALL" ||
-        (r.clinicName && r.clinicName === selectedClinic) ||
-        (r.facilityName && r.facilityName.includes(selectedClinic));
-
-      // Station HQ
-      const matchesStation =
-        selectedStationHq === "ALL" || r.stationHq === selectedStationHq;
-
-      // Response Type / Overall Rating
-      const ratingVal = String(r.responseType || r.overallRating);
-      const matchesResponse =
-        selectedResponseType === "ALL" ||
-        ratingVal === selectedResponseType ||
-        (selectedResponseType === "Could Be Better" &&
-          (ratingVal === "Could Be Better" || r.isGrievance)) ||
-        (selectedResponseType === "Excellent Service" &&
-          (ratingVal === "Excellent Service" || ratingVal === "Excellent")) ||
-        (selectedResponseType === "Acceptable standard" &&
-          (ratingVal === "Acceptable standard" || ratingVal === "Acceptable"));
-
-      // Status
-      const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
-
-      // Media
-      let matchesMedia = true;
-      const hasAudio = !!(
-        r.registration?.audioUrl ||
-        r.doctor?.audioUrl ||
-        r.pharmacy?.audioUrl ||
-        r.cleanliness?.audioUrl ||
-        r.suggestions?.audioUrl
+    if (activeUser.role === "CMO_2") {
+      // CMO_2 sees feedback of facilities in their zone or assigned CMO_1s
+      const lowerCmoIds = cmos
+        .filter(
+          (c) =>
+            c.id === activeUser.id ||
+            c.parentCmoId === activeUser.id ||
+            c.zone === activeUser.zone,
+        )
+        .map((c) => c.id);
+      return records.filter(
+        (r) =>
+          lowerCmoIds.includes(r.assignedCmoId) || r.zone === activeUser.zone,
       );
-      const hasImage = !!(
-        r.registration?.imageUrl ||
-        r.doctor?.imageUrl ||
-        r.pharmacy?.imageUrl ||
-        r.cleanliness?.imageUrl ||
-        r.suggestions?.imageUrl
-      );
+    }
 
-      if (mediaFilter === "AUDIO") matchesMedia = hasAudio;
-      if (mediaFilter === "IMAGE") matchesMedia = hasImage;
-      if (mediaFilter === "BOTH") matchesMedia = hasAudio && hasImage;
+    // CMO_1 sees feedback assigned to their facility / CMO_1 ID
+    return records.filter(
+      (r) =>
+        r.assignedCmoId === activeUser.id ||
+        (activeUser.assignedCentreIds &&
+          activeUser.assignedCentreIds.includes(r.centreId)),
+    );
+  }, [activeUser, records, cmos]);
 
-      return (
-        matchesSearch &&
-        matchesYear &&
-        matchesMonth &&
-        matchesDate &&
-        matchesClinic &&
-        matchesStation &&
-        matchesResponse &&
-        matchesStatus &&
-        matchesMedia
-      );
+  // Filtered records for Feedback Tab
+  const filteredFeedbackTabRecords = useMemo(() => {
+    return scopedRecords.filter((r) => {
+      if (selectedCmo2Filter !== "ALL") {
+        const cmo2 = cmos.find((c) => c.id === selectedCmo2Filter);
+        if (cmo2 && r.zone !== cmo2.zone) return false;
+      }
+      if (
+        selectedCmo1Filter !== "ALL" &&
+        r.assignedCmoId !== selectedCmo1Filter
+      ) {
+        return false;
+      }
+      if (
+        selectedResponseFilter !== "ALL" &&
+        r.overallRating !== selectedResponseFilter &&
+        r.responseType !== selectedResponseFilter
+      ) {
+        return false;
+      }
+      if (selectedMonthFilter !== "ALL" && r.month !== selectedMonthFilter) {
+        return false;
+      }
+      if (selectedYearFilter !== "ALL" && r.year !== selectedYearFilter) {
+        return false;
+      }
+      return true;
     });
   }, [
-    records,
-    searchQuery,
-    selectedYear,
-    selectedMonth,
-    selectedDate,
-    selectedClinic,
-    selectedStationHq,
-    selectedResponseType,
-    statusFilter,
-    mediaFilter,
+    scopedRecords,
+    selectedCmo2Filter,
+    selectedCmo1Filter,
+    selectedResponseFilter,
+    selectedMonthFilter,
+    selectedYearFilter,
+    cmos,
   ]);
 
-  // Pagination calculation
-  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage) || 1;
-  const paginatedRecords = useMemo(() => {
+  // Pagination for Feedback Tab
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredFeedbackTabRecords.length / itemsPerPage),
+  );
+  const displayedFeedbackTabRecords = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return filteredRecords.slice(start, start + itemsPerPage);
-  }, [filteredRecords, currentPage]);
+    return filteredFeedbackTabRecords.slice(start, start + itemsPerPage);
+  }, [filteredFeedbackTabRecords, currentPage, itemsPerPage]);
 
-  const resetFilters = () => {
-    setSelectedYear("ALL");
-    setSelectedMonth("ALL");
-    setSelectedDate("");
-    setSelectedClinic("ALL");
-    setSelectedStationHq("ALL");
-    setSelectedResponseType("ALL");
-    setShowGrievancesOnly(false);
-    dispatch(setSearchQuery(""));
-    dispatch(setRatingFilter("ALL"));
-    dispatch(setStatusFilter("ALL"));
-    dispatch(setMediaFilter("ALL"));
-    setCurrentPage(1);
-    showToast("Filters reset successfully");
-  };
-
-  const handleEscalateCMO = (recordId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    dispatch(
-      updateRecordStatus({
-        id: recordId,
-        status: "Assigned to CMO",
-        note: "Escalated by CMO Rajkot to CMO for priority review",
-        officerName: "CMO Rajkot",
-      }),
-    );
-    showToast("Escalated to CMO successfully!");
-  };
-
-  const handleLogout = () => {
-    dispatch(logoutAdmin());
-    if (window.location.pathname.toLowerCase().includes("/admin")) {
-      window.history.pushState({}, "", "/");
+  const handleManualPageSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pageNum = parseInt(manualPageInput, 10);
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+      setCurrentPage(pageNum);
+      setManualPageInput("");
     }
   };
 
+  const unreadNotifCount = notifications.filter((n) => !n.isRead).length;
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
   return (
-    <div className="min-h-screen w-full bg-[#0A0F1D] text-slate-100 font-sans selection:bg-amber-500 selection:text-slate-950 flex flex-col relative overflow-x-hidden">
-      {/* ------------------------------------------------------------------- */}
-      {/* STREAMLINED CLEAN & EASY TOP HEADER BAR */}
-      {/* ------------------------------------------------------------------- */}
-      <header className="sticky top-0 z-40 bg-[#0F172A]/95 backdrop-blur-md border-b border-slate-800 px-6 py-3 flex items-center justify-between shadow-lg h-16">
-        {/* Left: Brand Emblem & Title */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-amber-500 border border-[#1b357b7e] rounded-full text-[#0A0F1D] flex items-center justify-center shrink-0 shadow-sm">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              className="w-6 h-6"
-            >
-              <path d="M0 0h24v24H0z" fill="none" />
-              <g
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.5"
-              >
-                <path d="M9.349 3.434a2.684 2.684 0 1 0 5.368 0a2.684 2.684 0 0 0-5.368 0m5.881 9.191a1.888 1.888 0 0 1 1.807 2.523m-5.004-9.03V23.25" />
-                <path d="M14.494 4.5h7.889c2.677 0-1.2 6.453-6.772 4.3M9.569 4.5H1.682c-2.676 0 1.2 6.453 6.772 4.3m.381 3.825A1.9 1.9 0 0 0 6.916 14.5a1.975 1.975 0 0 0 1.919 1.964h5.116a1.92 1.92 0 0 1 0 3.838h-3.517a1.64 1.64 0 0 0-1.6 1.675a1.7 1.7 0 0 0 .531 1.247" />
-              </g>
-            </svg>
+    <div className="min-h-screen bg-[#0F1115] text-[#F5F6FA] flex flex-col font-sans selection:bg-[#5B8DEF] selection:text-white">
+      {/* User Detail Modal */}
+      <UserFeedbackDetailModal />
+      <div className="z-30 sticky top-0">
+        {/* GLOBAL HEADER */}
+        <header className="w-full bg-[#1A1D24] border-b border-[#2A2E38] px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-lg">
+          {/* Left: Logo & Role Badge */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#5B8DEF]/15 border border-[#5B8DEF]/30 flex items-center justify-center text-[#5B8DEF]">
+              <Icon
+                icon="healthicons:health-vulnerability-through-social-determinants-outline"
+                className="w-8 h-8"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-md font-bold text-[#F5F6FA] tracking-wide">
+                  Arogya Mandir
+                </span>
+              </div>
+              <div className="text-[11px] text-[#9AA0AC] font-sans">
+                CMO Dashboard
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col items-start gap-1">
-            <span className="text-xl font-bold tracking-wide text-white">
-              Arogya Mandir
-            </span>
-            <span className="px-2 py-0.1 rounded-full bg-slate-800 text-amber-400 text-[10px] font-semibold border border-slate-700">
-              Dashboard
-            </span>
-          </div>
-        </div>
 
-        {/* Center: Primary Navigation Tabs */}
-        <nav className="hidden md:flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
-          {[
-            {
-              id: "dashboard",
-              label: "Dashboard",
-              icon: "ant-design:dashboard-outlined",
-            },
-            {
-              id: "feedbacks",
-              label: "Feedbacks",
-              icon: "fluent:person-feedback-48-regular",
-            },
-            {
-              id: "reports",
-              label: "Reports & Export",
-              icon: "oui:nav-reports",
-            },
-            {
-              id: "notifications",
-              label: "Notifications",
-              icon: "clarity:notification-outline-badged",
-              badge: notifications.length,
-            },
-            {
-              id: "logout",
-              label: "Logout",
-              icon: "ph:sign-out-bold",
-            },
-          ].map((nav) => {
-            const isActive = activeTab === nav.id;
-            return (
+          {/* Right: Notifications Bell & Role Switcher & Logout */}
+          <div className="flex items-center gap-3">
+            {/* Profile Menu */}
+            <div className="relative">
               <button
-                key={nav.id}
-                onClick={() => {
-                  if (nav.id === "logout") {
-                    setShowLogoutModal(true);
-                  } else {
-                    setActiveTab(nav.id as MainNavTab);
-                  }
-                }}
-                className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-2 relative ${
-                  isActive
-                    ? "text-amber-400 font-bold bg-slate-800/90 shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
+                type="button"
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl hover:bg-[#20232B] transition cursor-pointer"
               >
-                <Icon icon={nav.icon} className="w-4 h-4" />
-                <span>{nav.label}</span>
-                {nav.badge && nav.badge > 0 ? (
-                  <span className="w-4 h-4 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold flex items-center justify-center">
-                    {nav.badge}
+                {/* Profile Image */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 16 16"
+                  className="w-8 h-8 rounded-full object-cover border border-[#2A2E38]"
+                >
+                  <path d="M0 0h16v16H0z" fill="none" />
+                  <g fill="currentColor">
+                    <path d="M11 6a3 3 0 1 1-6 0a3 3 0 0 1 6 0" />
+                    <path
+                      fill-rule="evenodd"
+                      d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"
+                    />
+                  </g>
+                </svg>
+
+                {/* Name + Role */}
+                <div className="hidden sm:block text-left leading-tight">
+                  <div className="text-xs font-bold text-[#F5F6FA]">
+                    {activeUser?.name || "CMO User"}
+                  </div>
+
+                  <span
+                    className={`px-2 py-px rounded-md text-[10px] font-medium font-sans  ${
+                      activeUser?.role === "SUPER_ADMIN"
+                        ? "bg-[#7C5CFC]/20 text-[#7C5CFC] border border-[#7C5CFC]/30"
+                        : activeUser?.role === "CMO_3"
+                          ? "bg-[#5B8DEF]/20 text-[#5B8DEF] border border-[#5B8DEF]/30"
+                          : activeUser?.role === "CMO_2"
+                            ? "bg-[#F5B700]/20 text-[#F5B700] border border-[#F5B700]/30"
+                            : "bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30"
+                    }`}
+                  >
+                    {activeUser?.role} ({activeUser?.zone || "All Zones"})
                   </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
+                </div>
 
-        {/* Right: Clean User Pill & Quick Actions */}
-        <div className="flex items-center gap-3">
-          {/* User Profile Pill */}
-          <div className="hidden sm:flex items-center gap-2.5 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1">
-            <img
-              src={cmoAvatar}
-              alt="Profile"
-              className="w-7 h-7 rounded-full object-cover border border-amber-500/50"
-            />
-            <span className="text-xs font-semibold text-slate-200">
-              CMO Rajkot
-            </span>
-          </div>
-
-          {/* Export Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-            >
-              <Icon icon="ph:download-simple-bold" className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
-
-            {showExportMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowExportMenu(false)}
+                <Icon
+                  icon="ph:caret-down-bold"
+                  className={`w-3.5 h-3.5 text-[#9AA0AC] transition-transform ${
+                    showProfileMenu ? "rotate-180" : ""
+                  }`}
                 />
-                <div className="absolute right-0 mt-2 w-44 bg-[#111827] border border-slate-800 rounded-xl shadow-xl p-1.5 z-20 space-y-1 text-xs font-semibold">
+              </button>
+
+              {/* Profile Dropdown */}
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-[#1A1D24] border border-[#2A2E38] rounded-2xl shadow-2xl p-2 z-50">
+                  {/* Profile Header */}
+                  <div className="px-3 py-3 border-b border-[#2A2E38]">
+                    <div className="flex items-center gap-3">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 16 16"
+                        className="w-10 h-10 rounded-full object-cover border border-[#2A2E38]"
+                      >
+                        <path d="M0 0h16v16H0z" fill="none" />
+                        <g fill="currentColor">
+                          <path d="M11 6a3 3 0 1 1-6 0a3 3 0 0 1 6 0" />
+                          <path
+                            fill-rule="evenodd"
+                            d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"
+                          />
+                        </g>
+                      </svg>
+
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-[#F5F6FA] truncate">
+                          {activeUser?.name || "CMO User"}
+                        </div>
+
+                        <span
+                          className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold font-sans  ${
+                            activeUser?.role === "SUPER_ADMIN"
+                              ? "bg-[#7C5CFC]/20 text-[#7C5CFC] border border-[#7C5CFC]/30"
+                              : activeUser?.role === "CMO_3"
+                                ? "bg-[#5B8DEF]/20 text-[#5B8DEF] border border-[#5B8DEF]/30"
+                                : activeUser?.role === "CMO_2"
+                                  ? "bg-[#F5B700]/20 text-[#F5B700] border border-[#F5B700]/30"
+                                  : "bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30"
+                          }`}
+                        >
+                          {activeUser?.role} ({activeUser?.zone || "All Zones"})
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="inline-flex mt-1 px-2 py-0.5 rounded-md bg-[#5B8DEF]/20 text-[#7aa2f0] border border-[#5B8DEF]/30 text-[9px] font-medium tracking-wide">
+                    {activeUser?.designation}
+                  </span>
+
+                  {/* View Profile */}
                   <button
-                    onClick={() => {
-                      exportToCSV(filteredRecords);
-                      setShowExportMenu(false);
-                    }}
-                    className="w-full px-3 py-2 text-left hover:bg-slate-800 rounded-lg text-emerald-400 flex items-center gap-2 cursor-pointer"
+                    type="button"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 mt-1 rounded-xl text-xs font-semibold text-[#F5F6FA] hover:bg-[#20232B] transition cursor-pointer"
                   >
-                    <Icon icon="ph:file-xls-bold" className="w-4 h-4" />
-                    <span>Download CSV</span>
+                    <Icon
+                      icon="ph:user-circle-bold"
+                      className="w-4 h-4 text-[#5B8DEF]"
+                    />
+                    <span>View Profile</span>
                   </button>
+
+                  {/* Logout */}
                   <button
+                    type="button"
                     onClick={() => {
-                      exportToPDF(filteredRecords);
-                      setShowExportMenu(false);
+                      AuthService.logout();
+                      dispatch(logoutAdmin());
                     }}
-                    className="w-full px-3 py-2 text-left hover:bg-slate-800 rounded-lg text-red-400 flex items-center gap-2 cursor-pointer"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#F87171] hover:bg-[#EF4444]/10 transition cursor-pointer"
                   >
-                    <Icon icon="ph:file-pdf-bold" className="w-4 h-4" />
-                    <span>Download PDF</span>
+                    <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
+                    <span>Logout</span>
                   </button>
                 </div>
-              </>
-            )}
-          </div>
-
-          {/* Mobile Nav Toggle */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1.5 rounded-xl bg-slate-800 text-slate-300 md:hidden cursor-pointer"
-          >
-            <Icon
-              icon={mobileMenuOpen ? "ph:x-bold" : "ph:list-bold"}
-              className="w-5 h-5"
-            />
-          </button>
-        </div>
-      </header>
-
-      {/* MOBILE MENU NAV DRAWER */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-[#0F172A] border-b border-slate-800 p-3 space-y-1 md:hidden z-30"
-          >
-            {[
-              {
-                id: "dashboard",
-                label: "Dashboard",
-                icon: "ph:grid-four-bold",
-              },
-              {
-                id: "feedbacks",
-                label: "Feedbacks",
-                icon: "ph:list-bullets-bold",
-              },
-              {
-                id: "reports",
-                label: "Reports & Export",
-                icon: "ph:file-text-bold",
-              },
-              {
-                id: "notifications",
-                label: "Notifications",
-                icon: "clarity:notification-outline-badged",
-              },
-              {
-                id: "logout",
-                label: "Logout",
-                icon: "ph:sign-out-bold",
-              },
-            ].map((nav) => (
-              <button
-                key={nav.id}
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  if (nav.id === "logout") {
-                    setShowLogoutModal(true);
-                  } else {
-                    setActiveTab(nav.id as MainNavTab);
-                  }
-                }}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 transition ${
-                  activeTab === nav.id
-                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold"
-                    : "text-slate-300 hover:bg-slate-800"
-                }`}
-              >
-                <Icon icon={nav.icon} className="w-4 h-4" />
-                <span>{nav.label}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* LOGOUT CONFIRMATION MODAL */}
-      <AnimatePresence>
-        {showLogoutModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="bg-[#111827] border border-slate-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl z-50"
-            >
-              <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center mx-auto">
-                <Icon icon="ph:sign-out-bold" className="w-6 h-6 text-red-400" />
-              </div>
-
-              <div>
-                <h3 className="text-lg font-bold text-white">
-                  Are you sure to logout?
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  You will be logged out of your admin session and redirected to login.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowLogoutModal(false)}
-                  className="py-2.5 px-4 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLogoutModal(false);
-                    handleLogout();
-                  }}
-                  className="py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-md transition cursor-pointer"
-                >
-                  Logout
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* TOAST NOTIFICATION */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-18 right-6 z-50 bg-amber-500 text-slate-950 px-4 py-2 rounded-xl shadow-xl font-bold text-xs flex items-center gap-2"
-          >
-            <Icon icon="ph:check-circle-fill" className="w-4 h-4" />
-            <span>{toastMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ------------------------------------------------------------------- */}
-      {/* FILTER TOOLBAR - ONLY DISPLAYED ON FEEDBACKS TAB PAGE */}
-      {/* ------------------------------------------------------------------- */}
-      {activeTab === "feedbacks" && (
-        <div className="bg-[#0F172A]/80 border-b border-slate-800/80 px-6 py-3 z-20">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
-            {/* Search Input */}
-            <div className="relative w-full md:w-72 shrink-0">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => dispatch(setSearchQuery(e.target.value))}
-                placeholder="Search patient, mobile, clinic..."
-                className="w-full bg-[#111827] border border-slate-700/70 rounded-xl py-2 pl-9 pr-7 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 transition"
-              />
-              <Icon
-                icon="ph:magnifying-glass-bold"
-                className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => dispatch(setSearchQuery(""))}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                >
-                  <Icon icon="ph:x-bold" className="w-3.5 h-3.5" />
-                </button>
               )}
             </div>
 
-            {/* Clean Dropdown Filter Group */}
-            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="bg-[#111827] border border-slate-700/70 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
-              >
-                <option value="ALL">All Years</option>
-                <option value="2026">2026</option>
-                <option value="2025">2025</option>
-              </select>
-
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-[#111827] border border-slate-700/70 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
-              >
-                <option value="ALL">All Months</option>
-                <option value="Aug">August</option>
-                <option value="Jul">July</option>
-                <option value="Jun">June</option>
-              </select>
-
-              <select
-                value={selectedClinic}
-                onChange={(e) => setSelectedClinic(e.target.value)}
-                className="bg-[#111827] border border-slate-700/70 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
-              >
-                <option value="ALL">All Feedbacks</option>
-                <option value="Rajkot">Rajkot</option>
-                <option value="Jamnagar">Jamnagar</option>
-                <option value="Dwarka">Dwarka</option>
-                <option value="Delhi Cantt">Delhi Cantt</option>
-                <option value="Rohini">Rohini</option>
-              </select>
-
-              <select
-                value={selectedResponseType}
-                onChange={(e) => {
-                  setSelectedResponseType(e.target.value);
-                  if (e.target.value === "Could Be Better")
-                    setShowGrievancesOnly(true);
-                  else setShowGrievancesOnly(false);
-                }}
-                className="bg-[#111827] border border-slate-700/70 rounded-xl py-1.5 px-3 text-xs font-medium text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
-              >
-                <option value="ALL">All Ratings</option>
-                <option value="Excellent Service">Excellent Service</option>
-                <option value="Acceptable standard">Acceptable Standard</option>
-                <option value="Could Be Better">Could Be Better</option>
-              </select>
-
+            {/* Notifications Bell Dropdown */}
+            <div className="relative">
               <button
-                onClick={resetFilters}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1"
+                type="button"
+                onClick={() =>
+                  setShowNotificationsDropdown(!showNotificationsDropdown)
+                }
+                className="p-2 rounded-xl bg-[#20232B] hover:bg-[#2A2E38] text-[#F5F6FA] border border-[#2A2E38] transition cursor-pointer relative"
               >
-                <Icon icon="ph:arrow-clockwise-bold" className="w-3.5 h-3.5" />
-                <span>Reset</span>
+                <Icon icon="ph:bell-bold" className="w-5 h-5 text-[#9AA0AC]" />
+                {unreadNotifCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center font-sans">
+                    {unreadNotifCount}
+                  </span>
+                )}
               </button>
+
+              {/* Notifications Panel */}
+              {showNotificationsDropdown && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#1A1D24] border border-[#2A2E38] rounded-2xl shadow-2xl p-4 z-40 space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#2A2E38] pb-2">
+                    <div className="text-xs font-bold text-[#F5F6FA] uppercase tracking-wider flex items-center gap-1.5">
+                      <Icon
+                        icon="ph:bell-ringing-bold"
+                        className="w-4 h-4 text-[#5B8DEF]"
+                      />
+                      <span>Role Notifications</span>
+                    </div>
+                    <span className="text-[10px] font-sans text-[#5B8DEF]">
+                      {notifications.length} Total
+                    </span>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto space-y-2 text-xs">
+                    {notifications.length === 0 ? (
+                      <div className="py-6 text-center text-[#9AA0AC]">
+                        No notifications found.
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => {
+                            StorageService.markNotificationRead(n.id);
+                            const relatedRecord = records.find(
+                              (f) => f.id === n.feedbackId,
+                            );
+                            if (relatedRecord)
+                              dispatch(openDetailModal(relatedRecord as any));
+                            setShowNotificationsDropdown(false);
+                          }}
+                          className={`p-3 rounded-xl border transition cursor-pointer space-y-1 ${
+                            n.isRead
+                              ? "bg-[#20232B]/50 border-[#2A2E38] text-[#9AA0AC]"
+                              : "bg-[#20232B] border-[#5B8DEF]/40 text-[#F5F6FA]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase font-sans ${
+                                n.type === "escalation"
+                                  ? "bg-[#F97316]/20 text-[#F97316]"
+                                  : n.type === "revert"
+                                    ? "bg-[#F5B700]/20 text-[#F5B700]"
+                                    : n.type === "resolution"
+                                      ? "bg-[#22C55E]/20 text-[#22C55E]"
+                                      : "bg-[#5B8DEF]/20 text-[#5B8DEF]"
+                              }`}
+                            >
+                              {n.type}
+                            </span>
+                            <span className="text-[10px] text-[#9AA0AC] font-sans">
+                              {n.timestamp}
+                            </span>
+                          </div>
+                          <p className="text-xs">{n.message}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Logout */}
+            <button
+              type="button"
+              onClick={() => {
+                AuthService.logout();
+                dispatch(logoutAdmin());
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-[#20232B] hover:bg-[#EF4444]/20 hover:text-[#EF4444] text-[#9AA0AC] text-xs font-semibold border border-[#2A2E38] transition cursor-pointer flex items-center gap-1.5"
+            >
+              <Icon icon="ph:sign-out-bold" className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
-        </div>
-      )}
+        </header>
 
-      {/* ------------------------------------------------------------------- */}
-      {/* MAIN DISPLAY PORT BODY */}
-      {/* ------------------------------------------------------------------- */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-        {/* =================================================================== */}
-        {/* TAB 1: DASHBOARD OVERVIEW */}
-        {/* =================================================================== */}
-        {activeTab === "dashboard" && (
-          <motion.div
-            key="dashboard"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            {/* CLEAN PAGE HEADER & SUB TABS */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  Executive Analytics Overview
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Real-time patient satisfaction telemetry and Feedback response
-                  metrics
-                </p>
-              </div>
+        {/* NAVIGATION TAB BAR (§1, §8.2) */}
+        <div className="bg-[#1A1D24]/72 backdrop-blur-md shadow-lg shadow-black/20 border-b border-[#2A2E38] px-4 sm:px-8 py-2.5 flex items-center justify-between overflow-x-auto ">
+          <div className="flex items-center gap-2 w-full px-72 ">
+            {/* Executive Overview */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("overview");
+                setSelectedPerformanceCentre(null);
+              }}
+              className={`w-1/3 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "overview" && !selectedPerformanceCentre
+                  ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20"
+                  : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
+              }`}
+            >
+              <Icon icon="ph:chart-pie-bold" className="w-4 h-4" />
+              <span>Executive Overview</span>
+            </button>
 
-              {/* Overview vs Analysis Toggle */}
-              <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
-                <button
-                  onClick={() => setDashSubTab("overview")}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    dashSubTab === "overview"
-                      ? "bg-amber-500 text-slate-950 shadow-sm"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  Executive Overview
-                </button>
-                <button
-                  onClick={() => setDashSubTab("analysis")}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                    dashSubTab === "analysis"
-                      ? "bg-amber-500 text-slate-950 shadow-sm"
-                      : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  Analysis
-                </button>
-              </div>
-            </div>
-
-            {/* DASHBOARD CHARTS CONTENT */}
-            {dashSubTab === "overview" ? (
-              <AdminCharts filteredRecords={filteredRecords} />
-            ) : (
-              <div className="space-y-6">
-                {/* 3 Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Total Submissions
-                      </div>
-                      <div className="text-3xl font-bold text-white mt-1">
-                        {filteredRecords.length || 394}
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                      <Icon icon="ph:clipboard-text-bold" className="w-6 h-6" />
-                    </div>
-                  </div>
-
-                  <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Grievances Detected
-                      </div>
-                      <div className="text-3xl font-bold text-red-400 mt-1">
-                        {
-                          filteredRecords.filter(
-                            (r) =>
-                              String(r.responseType || r.overallRating) ===
-                                "Could Be Better" || r.isGrievance,
-                          ).length
-                        }
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400">
-                      <Icon icon="ph:warning-circle-bold" className="w-6 h-6" />
-                    </div>
-                  </div>
-
-                  <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        SLA Resolution Rate
-                      </div>
-                      <div className="text-3xl font-bold text-emerald-400 mt-1">
-                        {filteredRecords.length > 0
-                          ? Math.round(
-                              (filteredRecords.filter(
-                                (r) => r.status === "Resolved",
-                              ).length /
-                                filteredRecords.length) *
-                                100,
-                            )
-                          : 88}
-                        %
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                      <Icon icon="ph:shield-check-bold" className="w-6 h-6" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <WeekOnWeekAreaChart />
-                  <MonthOnMonthScoreChart filteredRecords={filteredRecords} />
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* =================================================================== */}
-        {/* TAB 2: FEEDBACKS MANAGEMENT TAB */}
-        {/* =================================================================== */}
-        {activeTab === "feedbacks" && (
-          <motion.div
-            key="feedbacks"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            {/* Header Title with Dynamic Toggle Button */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  Patient Feedback Records
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Detailed listing of patient ratings, clinic responses and
-                  grievance actions
-                </p>
-              </div>
-
-              {/* Dynamic Toggle Button: Show Grievances Only <-> Show All Feedbacks */}
+            {/* Key Insights (CMO_3 & SuperAdmin only - §8.2) */}
+            {(activeUser?.role === "CMO_3" ||
+              activeUser?.role === "SUPER_ADMIN") && (
               <button
-                onClick={handleToggleGrievances}
-                className={`px-4 py-2 rounded-xl border font-bold text-xs transition cursor-pointer flex items-center gap-2 shadow-sm ${
-                  showGrievancesOnly
-                    ? "bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400"
-                    : "border-amber-500/40 text-amber-400 hover:bg-amber-500/10"
+                type="button"
+                onClick={() => {
+                  setActiveTab("insights");
+                  setSelectedPerformanceCentre(null);
+                }}
+                className={`w-1/3 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === "insights"
+                    ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20"
+                    : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
                 }`}
               >
                 <Icon
-                  icon={
-                    showGrievancesOnly
-                      ? "ph:list-bullets-bold"
-                      : "ph:warning-circle-bold"
-                  }
-                  className="w-4 h-4"
+                  icon="ph:sparkle-bold"
+                  className="w-4 h-4 text-[#F5B700]"
                 />
-                <span>
-                  {showGrievancesOnly
-                    ? "Show All Feedbacks"
-                    : "Show Grievances Only"}
-                </span>
+                <span>Key Insights</span>
               </button>
+            )}
+
+            {/* Analysis Tab */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("analysis");
+                setSelectedPerformanceCentre(null);
+              }}
+              className={`w-1/3 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "analysis" || selectedPerformanceCentre
+                  ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20"
+                  : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
+              }`}
+            >
+              <Icon icon="ph:chart-line-up-bold" className="w-4 h-4" />
+              <span>Analysis</span>
+            </button>
+
+            {/* Feedback Tab */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("feedbacks");
+                setSelectedPerformanceCentre(null);
+              }}
+              className={`w-1/3 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeTab === "feedbacks"
+                  ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20"
+                  : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
+              }`}
+            >
+              <Icon icon="ph:chat-teardrop-text-bold" className="w-4 h-4" />
+              <span>Feedback ({scopedRecords.length})</span>
+            </button>
+
+            {/* SuperAdmin Management Panel Tab */}
+            {activeUser?.role === "SUPER_ADMIN" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("admin_panel");
+                  setSelectedPerformanceCentre(null);
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  activeTab === "admin_panel"
+                    ? "bg-[#7C5CFC] text-white shadow-lg shadow-[#7C5CFC]/20"
+                    : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
+                }`}
+              >
+                <Icon
+                  icon="ph:gear-six-bold"
+                  className="w-4 h-4 text-[#7C5CFC]"
+                />
+                <span>SuperAdmin Controls</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN BODY AREA */}
+      <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
+        {/* Toast Notice */}
+        {toastMessage && (
+          <div className="p-3.5 rounded-2xl bg-[#5B8DEF]/15 border border-[#5B8DEF]/30 text-[#5B8DEF] text-xs font-bold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Icon icon="ph:info-bold" className="w-4 h-4" />
+              <span>{toastMessage}</span>
             </div>
+          </div>
+        )}
 
-            {/* TWO COLUMN GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-              {/* Left Column: Current Monthly Cycle Details with Attractive Mini Chart */}
-              <div className="bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-lg p-5 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">
-                    Current Monthly Cycle
-                  </span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
+        {/* 1. EXECUTIVE OVERVIEW TAB (§6.1, §8.1) */}
+        {activeTab === "overview" && !selectedPerformanceCentre && (
+          <div className="space-y-6">
+            {/* Stat Summary & ChartJS Visualization Block for CMO_1 */}
+            {activeUser?.role === "CMO_1" && (
+              <Cmo1ResponseChart scopedRecords={scopedRecords} />
+            )}
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
-                    <div className="text-xs text-slate-400 font-medium">
-                      Active Clinics
-                    </div>
-                    <div className="text-2xl font-bold text-white mt-1">1</div>
-                  </div>
+            {/* Standard Dashboard Charts */}
+            <AdminCharts
+              filteredRecords={scopedRecords}
+              currentRole={activeUser?.role}
+            />
 
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
-                    <div className="text-xs text-slate-400 font-medium">
-                      Feedbacks
-                    </div>
-                    <div className="text-2xl font-bold text-amber-400 mt-1">
-                      {filteredRecords.length || 42}
-                    </div>
-                  </div>
-                </div>
-
-                {/* ATTRACTIVE MINI CHART FOR CURRENT MONTHLY CYCLE */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-slate-300 font-bold">
-                      Weekly Cycle Trend
-                    </div>
-                    <span className="text-[10px] text-amber-400 font-mono font-bold">
-                      +14% Growth
+            {/* Bottom Summary Table with Totals Row (§8.1) */}
+            {(activeUser?.role === "CMO_3" ||
+              activeUser?.role === "SUPER_ADMIN") && (
+              <div className="bg-[#1A1D24] border border-[#2A2E38] rounded-2xl p-6 shadow-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-[#2A2E38] pb-3">
+                  <h3 className="text-sm font-bold text-[#F5F6FA] uppercase tracking-wider flex items-center gap-2">
+                    <Icon
+                      icon="ph:table-bold"
+                      className="w-4 h-4 text-[#5B8DEF]"
+                    />
+                    <span>
+                      State-Wide Mandir Performance & Ticket Metrics Breakdown
                     </span>
-                  </div>
-                  <div className="h-28 relative">
-                    <svg viewBox="0 0 100 45" className="w-full h-full">
-                      <defs>
-                        <linearGradient
-                          id="miniMonthGrad"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#F59E0B"
-                            stopOpacity="0.4"
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor="#F59E0B"
-                            stopOpacity="0.0"
-                          />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d="M 0 35 Q 25 5, 50 12 T 75 10 T 100 8 L 100 45 L 0 45 Z"
-                        fill="url(#miniMonthGrad)"
+                  </h3>
+                  <span className="text-xs font-sans text-[#9AA0AC]">
+                    Totals Row Enforced
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-[#F5F6FA]">
+                    <thead className="bg-[#20232B] border-b border-[#2A2E38] text-[#9AA0AC] font-semibold uppercase text-[11px]">
+                      <tr>
+                        <th className="py-3 px-4">Mandir / Facility Name</th>
+                        <th className="py-3 px-4 text-center">
+                          Total Feedbacks
+                        </th>
+                        <th className="py-3 px-4 text-center">
+                          Concerns Raised
+                        </th>
+                        <th className="py-3 px-4 text-center">Open Concerns</th>
+                        <th className="py-3 px-4 text-center">Resolved</th>
+                        <th className="py-3 px-4 text-center">Unresolved</th>
+                        <th className="py-3 px-4 text-center">Escalated</th>
+                        <th className="py-3 px-4 text-center">
+                          Closed Tickets
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2A2E38]">
+                      {centres.map((c) => {
+                        const mandirFbs = records.filter(
+                          (r) =>
+                            r.centreId === c.id || r.facilityName === c.name,
+                        );
+                        const tot = mandirFbs.length;
+                        const concerns = mandirFbs.filter(
+                          (r) =>
+                            r.overallRating === "Could Be Better" ||
+                            r.responseType === "Could Be Better",
+                        ).length;
+                        const openConcerns = mandirFbs.filter(
+                          (r) =>
+                            r.overallRating === "Could Be Better" &&
+                            r.status !== "Closed" &&
+                            r.status !== "Resolved",
+                        ).length;
+                        const res = mandirFbs.filter(
+                          (r) => r.status === "Resolved",
+                        ).length;
+                        const unres = tot - res;
+                        const esc = mandirFbs.filter(
+                          (r) => r.status === "Escalated",
+                        ).length;
+                        const cls = mandirFbs.filter(
+                          (r) => r.status === "Closed",
+                        ).length;
+
+                        return (
+                          <tr
+                            key={c.id}
+                            className="hover:bg-[#20232B]/50 transition"
+                          >
+                            <td className="py-3.5 px-4 font-bold text-[#F5F6FA]">
+                              {c.name}
+                              <span className="block text-[10px] text-[#9AA0AC] font-sans">
+                                {c.zone} Zone • {c.code}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-[#5B8DEF]">
+                              {tot}
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-[#EF4444]">
+                              {concerns}
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-[#F5B700]">
+                              {openConcerns}
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-[#22C55E]">
+                              {res}
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans text-[#9AA0AC]">
+                              {unres}
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-[#F97316]">
+                              {esc}
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-slate-400">
+                              {cls}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+
+                    {/* Totals Row Enforced (§8.1) */}
+                    <tfoot className="bg-[#20232B] font-extrabold border-t-2 border-[#2A2E38]">
+                      <tr>
+                        <td className="py-4 px-4 text-[#F5F6FA] uppercase tracking-wider text-xs">
+                          Total Aggregate State Metrics
+                        </td>
+                        <td className="py-4 px-4 text-center font-sans text-[#5B8DEF] text-sm">
+                          {records.length}
+                        </td>
+                        <td className="py-4 px-4 text-center font-sans text-[#EF4444] text-sm">
+                          {
+                            records.filter(
+                              (r) =>
+                                r.overallRating === "Could Be Better" ||
+                                r.responseType === "Could Be Better",
+                            ).length
+                          }
+                        </td>
+                        <td className="py-4 px-4 text-center font-sans text-[#F5B700] text-sm">
+                          {
+                            records.filter(
+                              (r) =>
+                                r.overallRating === "Could Be Better" &&
+                                r.status !== "Closed" &&
+                                r.status !== "Resolved",
+                            ).length
+                          }
+                        </td>
+                        <td className="py-4 px-4 text-center font-sans text-[#22C55E] text-sm">
+                          {
+                            records.filter((r) => r.status === "Resolved")
+                              .length
+                          }
+                        </td>
+                        <td className="py-4 px-4 text-center font-sans text-[#9AA0AC] text-sm">
+                          {records.length -
+                            records.filter((r) => r.status === "Resolved")
+                              .length}
+                        </td>
+                        <td className="py-4 px-4 text-center font-sans text-[#F97316] text-sm">
+                          {
+                            records.filter((r) => r.status === "Escalated")
+                              .length
+                          }
+                        </td>
+                        <td className="py-4 px-4 text-center font-sans text-slate-300 text-sm">
+                          {records.filter((r) => r.status === "Closed").length}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2. KEY INSIGHTS TAB (CMO_3 & SuperAdmin only - §8.2) */}
+        {activeTab === "insights" &&
+          (activeUser?.role === "CMO_3" ||
+            activeUser?.role === "SUPER_ADMIN") && (
+            <KeyInsightsTab
+              records={scopedRecords}
+              cmos={cmos}
+              centres={centres}
+              onSelectFeedback={(rec) => dispatch(openDetailModal(rec as any))}
+            />
+          )}
+
+        {/* 3. ANALYSIS TAB (§7.1, §8.3) */}
+        {activeTab === "analysis" &&
+          (selectedPerformanceCentre ? (
+            <PerformanceSummaryView
+              centre={selectedPerformanceCentre}
+              cmo={cmos.find((c) => c.id === selectedPerformanceCentre.cmoId)}
+              allRecords={records}
+              onBack={() => setSelectedPerformanceCentre(null)}
+              onSelectFeedback={(rec) => dispatch(openDetailModal(rec as any))}
+            />
+          ) : (
+            <div className="space-y-6">
+              {/* For CMO_1 & CMO_2: Render CmoAnalysisView with values, percentages, escalation/revert metrics & analysis box */}
+              {activeUser?.role === "CMO_1" || activeUser?.role === "CMO_2" ? (
+                <CmoAnalysisView records={scopedRecords} role={activeUser?.role} />
+              ) : (
+                /* For CMO_3 & SuperAdmin: Render standard trend & resolution charts */
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <WeekOnWeekAreaChart filteredRecords={scopedRecords} />
+                  <SolvedVsUnsolvedDonutChart filteredRecords={scopedRecords} />
+                </div>
+              )}
+
+              {/* Mandir / CMO_1 Performance Summaries List (§7.1) */}
+              <div className="bg-[#1A1D24] border border-[#2A2E38] rounded-2xl p-6 shadow-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-[#2A2E38] pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#F5F6FA] uppercase tracking-wider flex items-center gap-2">
+                      <Icon
+                        icon="ph:buildings-bold"
+                        className="w-4 h-4 text-[#5B8DEF]"
                       />
-                      <motion.path
-                        d="M 0 35 Q 25 5, 50 12 T 75 10 T 100 8"
-                        fill="none"
-                        stroke="#F59E0B"
-                        strokeWidth="0.5"
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
-                        transition={{ duration: 1 }}
-                      />
-                      <circle cx="25" cy="14" r="1.5" fill="#F59E0B" />
-                      <circle cx="50" cy="12" r="1.5" fill="#F59E0B" />
-                      <circle cx="75" cy="10" r="1.5" fill="#F59E0B" />
-                      <circle cx="100" cy="8" r="1.5" fill="#F59E0B" />
-                    </svg>
+                      <span>Facilities & CMO_1 Performance Summaries</span>
+                    </h3>
+                    <p className="text-xs text-[#9AA0AC]">
+                      Click "View Details" to open dedicated Performance Summary
+                      page.
+                    </p>
                   </div>
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                    <span>W1</span>
-                    <span>W2</span>
-                    <span>W3</span>
-                    <span>W4</span>
-                  </div>
+                  <span className="text-xs font-sans text-[#5B8DEF]">
+                    {centres.length} Mandirs
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-[#F5F6FA]">
+                    <thead className="bg-[#20232B] border-b border-[#2A2E38] text-[#9AA0AC] font-semibold uppercase text-[11px]">
+                      <tr>
+                        <th className="py-3 px-4 whitespace-nowrap">
+                          Mandir / Facility Name
+                        </th>
+                        <th className="py-3 px-4 whitespace-nowrap">
+                          Zone & Locality
+                        </th>
+                        <th className="py-3 px-4 whitespace-nowrap">
+                          Assigned CMO_1
+                        </th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap">
+                          Submissions
+                        </th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap">
+                          Could Be Better (Unescalated)
+                        </th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap">
+                          Satisfaction Score
+                        </th>
+                        <th className="py-3 px-4 text-center whitespace-nowrap">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2A2E38]">
+                      {centres.map((c) => {
+                        const cmoObj = cmos.find(
+                          (user) =>
+                            user.id === c.cmoId ||
+                            user.assignedCentreIds?.includes(c.id),
+                        );
+                        const mandirFbs = records.filter(
+                          (r) =>
+                            r.centreId === c.id || r.facilityName === c.name,
+                        );
+                        const tot = mandirFbs.length;
+                        const pos = mandirFbs.filter(
+                          (r) =>
+                            r.overallRating === "Excellent" ||
+                            r.responseType === "Excellent Service",
+                        ).length;
+                        const unescalatedBetter = mandirFbs.filter(
+                          (r) =>
+                            (r.overallRating === "Could Be Better" ||
+                              r.responseType === "Could Be Better") &&
+                            r.status !== "Escalated",
+                        ).length;
+                        const scorePct =
+                          tot > 0 ? Math.round((pos / tot) * 100) : 88;
+
+                        return (
+                          <tr
+                            key={c.id}
+                            className="hover:bg-[#20232B]/50 transition"
+                          >
+                            <td className="py-3.5 px-4 font-bold text-[#F5F6FA] whitespace-nowrap">
+                              {c.name}
+                              <span className="block font-sans text-[10px] text-[#5B8DEF]">
+                                {c.code}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-[#9AA0AC] font-sans whitespace-nowrap">
+                              {c.locality}
+                              <span className="block text-[10px] text-[#9AA0AC]">
+                                Zone: {c.zone}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 font-semibold text-[#F5F6FA] whitespace-nowrap">
+                              {cmoObj ? cmoObj.name : "Unassigned"}
+                              <span className="block text-[10px] text-[#9AA0AC] font-sans">
+                                {cmoObj?.phone || ""}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-[#5B8DEF] whitespace-nowrap">
+                              {tot}
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-[#EF4444] whitespace-nowrap">
+                              <span className="px-2 py-0.5 rounded bg-[#EF4444]/15 border border-[#EF4444]/30 text-[#EF4444]">
+                                {unescalatedBetter}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-sans font-bold text-[#22C55E] whitespace-nowrap">
+                              <span className="px-2 py-0.5 rounded bg-[#22C55E]/15 border border-[#22C55E]/30 text-[#22C55E]">
+                                {scorePct}%
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPerformanceCentre(c)}
+                                className="px-3 py-1.5 rounded-xl bg-[#5B8DEF] hover:bg-[#4A7CE4] text-white text-xs font-bold transition cursor-pointer inline-flex items-center gap-1"
+                              >
+                                <span>View Details</span>
+                                <Icon
+                                  icon="ph:arrow-right-bold"
+                                  className="w-3.5 h-3.5"
+                                />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ))}
+
+        {/* 4. FEEDBACK TAB (§6.3, §7.2, §8.4) */}
+        {activeTab === "feedbacks" && (
+          <div className="space-y-6">
+            {/* Active Mandirs Bar Chart (§6.3) */}
+            {/* <ActiveMandirsBarChart /> */}
+
+            {/* Filter Bar & Feedback List */}
+            <div className="bg-[#1A1D24] border border-[#2A2E38] rounded-2xl p-6 shadow-xl space-y-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#2A2E38] pb-4">
+                <h3 className="text-sm font-bold text-[#F5F6FA] uppercase tracking-wider flex items-center gap-2">
+                  <Icon
+                    icon="ph:funnel-bold"
+                    className="w-4 h-4 text-[#5B8DEF]"
+                  />
+                  <span>Feedback Escalation & Action Table</span>
+                </h3>
+
+                {/* Role Specific Filter Bar */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Select CMO_2 filter (CMO_3 & SuperAdmin only - §8.4) */}
+                  {(activeUser?.role === "CMO_3" ||
+                    activeUser?.role === "SUPER_ADMIN") && (
+                    <select
+                      value={selectedCmo2Filter}
+                      onChange={(e) => {
+                        setSelectedCmo2Filter(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="bg-[#20232B] border border-[#2A2E38] rounded-xl px-3 py-1.5 text-xs text-[#F5F6FA] focus:outline-none focus:border-[#5B8DEF]"
+                    >
+                      <option value="ALL">Select CMO_2 (All Zones)</option>
+                      {cmos
+                        .filter((c) => c.role === "CMO_2")
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} ({c.zone} Zone)
+                          </option>
+                        ))}
+                    </select>
+                  )}
+
+                  {/* Select CMO_1 filter (CMO_2, CMO_3, SuperAdmin - §7.2) */}
+                  {activeUser?.role !== "CMO_1" && (
+                    <select
+                      value={selectedCmo1Filter}
+                      onChange={(e) => {
+                        setSelectedCmo1Filter(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="bg-[#20232B] border border-[#2A2E38] rounded-xl px-3 py-1.5 text-xs text-[#F5F6FA] focus:outline-none focus:border-[#5B8DEF]"
+                    >
+                      <option value="ALL">Select CMO_1 (All Facilities)</option>
+                      {cmos
+                        .filter((c) => c.role === "CMO_1")
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                  )}
+
+                  {/* Select Response Filter */}
+                  <select
+                    value={selectedResponseFilter}
+                    onChange={(e) => {
+                      setSelectedResponseFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="bg-[#20232B] border border-[#2A2E38] rounded-xl px-3 py-1.5 text-xs text-[#F5F6FA] focus:outline-none focus:border-[#5B8DEF]"
+                  >
+                    <option value="ALL">Select Response (All)</option>
+                    <option value="Could Be Better">Could Be Better</option>
+                    <option value="Acceptable">Acceptable Standard</option>
+                    <option value="Excellent">Excellent Service</option>
+                  </select>
+
+                  <select
+                    value={selectedMonthFilter}
+                    onChange={(e) => {
+                      setSelectedMonthFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="bg-[#20232B] border border-[#2A2E38] rounded-xl px-3 py-1.5 text-xs text-[#F5F6FA] focus:outline-none focus:border-[#5B8DEF]"
+                  >
+                    <option value="ALL">Month (All)</option>
+                    <option value="Aug">August</option>
+                    <option value="Jul">July</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCmo2Filter("ALL");
+                      setSelectedCmo1Filter("ALL");
+                      setSelectedResponseFilter("ALL");
+                      setSelectedMonthFilter("ALL");
+                      setSelectedYearFilter("ALL");
+                      setCurrentPage(1);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#20232B] hover:bg-[#2A2E38] text-[#9AA0AC] hover:text-[#F5F6FA] text-xs font-semibold border border-[#2A2E38] transition cursor-pointer"
+                  >
+                    Clear Filters
+                  </button>
                 </div>
               </div>
 
-              {/* Right Column: Feedbacks Data Table */}
-              <div className="lg:col-span-2 bg-[#111827] border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-                <div className="px-5 py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                    Feedback Records ({filteredRecords.length})
-                  </span>
+              {/* Feedback List Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-[#F5F6FA]">
+                  <thead className="bg-[#20232B] border-b border-[#2A2E38] text-[#9AA0AC] font-semibold uppercase text-[11px] table-auto">
+                    <tr>
+                      <th className="py-3 px-4">Sr. No.</th>
+                      <th className="py-3 px-4">Tracking ID</th>
+                      <th className="py-3 px-4">Patient Name</th>
+                      <th className="py-3 px-4">Facility / Mandir</th>
+                      <th className="py-3 px-4">Timestamp</th>
+                      <th className="py-3 px-4">Rating</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2A2E38]">
+                    {displayedFeedbackTabRecords.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={8}
+                          className="py-8 text-center text-[#9AA0AC] font-medium"
+                        >
+                          No feedback submissions match your criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      displayedFeedbackTabRecords.map((r, idx) => (
+                        <tr
+                          key={r.id}
+                          className="hover:bg-[#20232B]/50 transition"
+                        >
+                          <td className="py-3.5 px-4 font-sans text-[#9AA0AC]">
+                            {(currentPage - 1) * itemsPerPage + idx + 1}
+                          </td>
+                          <td className="py-3.5 px-4 font-sans font-bold text-[#5B8DEF]">
+                            {r.trackingId}
+                          </td>
+                          <td className="py-3.5 px-4 font-semibold text-[#F5F6FA]">
+                            {r.patientName}
+                            <span className="block text-[10px] text-[#9AA0AC] font-sans">
+                              {r.visitorType}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-medium text-[#F5F6FA]">
+                            {r.facilityName}
+                          </td>
+                          <td className="py-3.5 px-4 font-sans text-[#9AA0AC] text-[11px]">
+                            {r.timestamp}
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap min-w-[160px]">
+                            {r.overallRating === "Could Be Better" ||
+                            r.responseType === "Could Be Better" ? (
+                              <span className="inline-flex items-center whitespace-nowrap px-2.5 py-1 rounded-full bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30 text-[11px] font-bold">
+                                Could Be Better
+                              </span>
+                            ) : r.overallRating === "Acceptable" ||
+                              r.responseType === "Acceptable standard" ? (
+                              <span className="inline-flex items-center whitespace-nowrap px-2.5 py-1 rounded-full bg-[#F5B700]/15 text-[#F5B700] border border-[#F5B700]/30 text-[11px] font-bold">
+                                Acceptable
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center whitespace-nowrap px-2.5 py-1 rounded-full bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 text-[11px] font-bold">
+                                Excellent
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap min-w-[160px]">
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                                r.status === "Resolved"
+                                  ? "bg-[#16A34A]/20 text-[#16A34A] border border-[#16A34A]/30"
+                                  : r.status === "Escalated"
+                                    ? "bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/30"
+                                    : r.status === "Reverted"
+                                      ? "bg-[#F5B700]/20 text-[#F5B700] border border-[#F5B700]/30"
+                                      : r.status === "Closed"
+                                        ? "bg-[#6B7280]/20 text-slate-300 border border-[#6B7280]/30"
+                                        : "bg-[#5B8DEF]/20 text-[#5B8DEF] border border-[#5B8DEF]/30"
+                              }`}
+                            >
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                dispatch(openDetailModal(r as any))
+                              }
+                              className="px-3.5 py-1.5 rounded-lg bg-[#5B8DEF] hover:bg-[#4A7CE4] text-white text-xs font-bold transition cursor-pointer"
+                            >
+                              View Feedback
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-                  {/* Pagination Pills */}
-                  <div className="flex items-center gap-1 font-mono text-xs">
+              {/* Pagination with manual "Go to page [__]" input field (§6.3) */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#2A2E38]">
+                <div className="text-xs text-[#9AA0AC]">
+                  Page{" "}
+                  <strong className="text-[#F5F6FA] font-sans">
+                    {currentPage}
+                  </strong>{" "}
+                  of{" "}
+                  <strong className="text-[#F5F6FA] font-sans">
+                    {totalPages}
+                  </strong>{" "}
+                  ({filteredFeedbackTabRecords.length} records)
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1.5 rounded-lg bg-[#20232B] disabled:opacity-40 hover:bg-[#2A2E38] text-[#F5F6FA] text-xs font-semibold border border-[#2A2E38] transition cursor-pointer"
+                  >
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                       (p) => (
                         <button
                           key={p}
+                          type="button"
                           onClick={() => setCurrentPage(p)}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition cursor-pointer ${
+                          className={`w-7 h-7 rounded-lg text-xs font-bold font-sans transition ${
                             currentPage === p
-                              ? "bg-amber-500 text-slate-950 font-bold"
-                              : "bg-slate-800 text-slate-400 hover:text-white"
+                              ? "bg-[#5B8DEF] text-white"
+                              : "bg-[#20232B] text-[#9AA0AC] hover:bg-[#2A2E38]"
                           }`}
                         >
                           {p}
@@ -951,329 +1161,53 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                       ),
                     )}
                   </div>
-                </div>
 
-                {/* Table Content */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-900/60 text-slate-400 border-b border-slate-800 font-semibold uppercase tracking-wider">
-                        <th className="py-3 px-4 w-12">Sr. No</th>
-                        <th className="py-3 px-4">Date</th>
-                        <th className="py-3 px-4">Clinic Name</th>
-                        <th className="py-3 px-4">Station HQ</th>
-                        <th className="py-3 px-4">Response</th>
-                        <th className="py-3 px-4 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 font-medium">
-                      {paginatedRecords.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={6}
-                            className="py-10 text-center text-slate-400"
-                          >
-                            No matching feedback records found.
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedRecords.map((r, idx) => {
-                          const rating = String(
-                            r.responseType || r.overallRating,
-                          );
-                          let responseClass = "text-emerald-400";
-                          if (rating === "Could Be Better")
-                            responseClass = "text-red-400";
-                          if (
-                            rating === "Acceptable standard" ||
-                            rating === "Acceptable"
-                          )
-                            responseClass = "text-amber-400";
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    className="px-3 py-1.5 rounded-lg bg-[#20232B] disabled:opacity-40 hover:bg-[#2A2E38] text-[#F5F6FA] text-xs font-semibold border border-[#2A2E38] transition cursor-pointer"
+                  >
+                    Next
+                  </button>
 
-                          return (
-                            <tr
-                              key={r.id}
-                              className="hover:bg-slate-800/40 transition"
-                            >
-                              <td className="py-3 px-4 font-medium text-slate-400">
-                                {(currentPage - 1) * itemsPerPage + idx + 1}
-                              </td>
-                              <td className="py-3 px-4 text-slate-300 font-medium">
-                                {r.date || r.timestamp}
-                              </td>
-                              <td className="py-3 px-4 font-medium text-white">
-                                {r.clinicName || r.facilityName}
-                              </td>
-                              <td className="py-3 px-4 text-slate-300 font-medium">
-                                {r.stationHq || "Jamnagar"}
-                              </td>
-                              <td
-                                className={`py-3 px-4 font-medium ${responseClass}`}
-                              >
-                                {rating}
-                              </td>
-
-                              <td className="py-3 px-4 text-center space-x-2">
-                                {/* View Button */}
-                                <button
-                                  onClick={() => dispatch(openDetailModal(r))}
-                                  className="relative group px-3 py-1 rounded-lg border border-amber-500/50 text-amber-400 hover:bg-amber-500/10 text-xs font-semibold transition cursor-pointer inline-flex items-center gap-1"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="1em"
-                                    height="1em"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path d="M0 0h24v24H0z" fill="none" />
-                                    <g
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth="2"
-                                    >
-                                      <path d="M21.257 10.962c.474.62.474 1.457 0 2.076C19.764 14.987 16.182 19 12 19s-7.764-4.013-9.257-5.962a1.69 1.69 0 0 1 0-2.076C4.236 9.013 7.818 5 12 5s7.764 4.013 9.257 5.962" />
-                                      <circle cx="12" cy="12" r="3" />
-                                    </g>
-                                  </svg>
-
-                                  {/* Tooltip */}
-                                  <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg border border-gray-700">
-                                    View
-                                  </span>
-                                </button>
-
-                                {/* Escalate Button */}
-                                {r.status !== "Assigned to CMO" && (
-                                  <button
-                                    onClick={(e) => handleEscalateCMO(r.id, e)}
-                                    className="relative group px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold transition cursor-pointer inline-flex items-center gap-1"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="1em"
-                                      height="1em"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path d="M0 0h24v24H0z" fill="none" />
-                                      <path
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth="2"
-                                        d="m22 11l-7-9v5C3.047 7 1.668 16.678 2 22c.502-2.685.735-7 13-7v5z"
-                                      />
-                                    </svg>
-
-                                    {/* Tooltip */}
-                                    <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg border border-gray-700">
-                                      Escalate
-                                    </span>
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* =================================================================== */}
-        {/* TAB 3: REPORTS TAB */}
-        {/* =================================================================== */}
-        {activeTab === "reports" && (
-          <motion.div
-            key="reports"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="bg-[#111827] border border-slate-800 rounded-2xl p-8 text-center space-y-4"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto">
-              <Icon icon="ph:file-text-bold" className="w-7 h-7" />
-            </div>
-            <h3 className="text-xl font-bold text-white">
-              Feedback Reports & Data Export
-            </h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Download complete telemetry reports for Feedback, grievances, and
-              patient feedback.
-            </p>
-
-            <div className="flex justify-center gap-3 pt-2">
-              <button
-                onClick={() =>
-                  exportToCSV(
-                    filteredRecords,
-                    "Arogya_Mandir_Feedback_Report.csv",
-                  )
-                }
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-2"
-              >
-                <Icon icon="ph:file-xls-bold" className="w-4 h-4" />
-                <span>Export CSV File</span>
-              </button>
-              <button
-                onClick={() =>
-                  exportToPDF(
-                    filteredRecords,
-                    "Arogya Mandir Governance Summary",
-                  )
-                }
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition cursor-pointer flex items-center gap-2"
-              >
-                <Icon icon="ph:file-pdf-bold" className="w-4 h-4" />
-                <span>Export PDF Report</span>
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* =================================================================== */}
-        {/* TAB 4: NOTIFICATIONS TAB (MATCHING IMAGE 1) */}
-        {/* =================================================================== */}
-        {activeTab === "notifications" && (
-          <motion.div
-            key="notifications"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-6"
-          >
-            {/* Top Breadcrumb & Header Box */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="text-xs text-slate-400 font-medium flex items-center gap-1">
-                  <span>Dashboard</span>
-                  <Icon icon="ph:caret-right-bold" className="w-3 h-3 text-slate-600" />
-                  <span className="text-amber-400 font-semibold">Notifications</span>
-                </div>
-
-                <div className="mt-3 bg-[#111827]/90 border border-slate-800 rounded-2xl px-6 py-4 shadow-lg inline-block">
-                  <h2 className="text-2xl font-bold text-amber-400">
-                    Notifications List
-                  </h2>
-                </div>
-              </div>
-
-              {/* Action Button: Make Marked as Seen */}
-              <button
-                onClick={handleMarkAsSeen}
-                className="self-end sm:self-auto px-4 py-2 rounded-lg border border-amber-400 text-amber-400 font-bold text-xs hover:bg-amber-400/10 transition cursor-pointer flex items-center gap-2 shadow-sm"
-              >
-                <span>Make Marked as Seen</span>
-              </button>
-            </div>
-
-            {/* NOTIFICATIONS TABLE CARD CONTAINER */}
-            <div className="bg-[#181F2F] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-              {/* Yellow Banner Header */}
-              <div className="bg-amber-400 text-slate-950 px-5 py-3 font-bold text-sm tracking-wide flex items-center justify-between shadow-md">
-                <span>List of Notifications</span>
-              </div>
-
-              {/* Table Column Header Row */}
-              <div className="bg-[#1f293d] border-b border-slate-700/80 px-5 py-3 grid grid-cols-12 gap-3 text-xs font-semibold text-slate-300 uppercase tracking-wider items-center">
-                <div className="col-span-1">Sr. No</div>
-                <div className="col-span-8 sm:col-span-9">Name</div>
-                <div className="col-span-2 sm:col-span-1 text-center">Action</div>
-                <div className="col-span-1 text-right">
-                  <input
-                    type="checkbox"
-                    checked={notifications.length > 0 && notifications.every((n) => n.checked)}
-                    onChange={(e) => {
-                      const checkedAll = e.target.checked;
-                      setNotifications(notifications.map((n) => ({ ...n, checked: checkedAll })));
-                    }}
-                    className="w-4 h-4 rounded border-slate-700 accent-amber-500 cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              {/* Notification Table Rows */}
-              <div className="divide-y divide-slate-800/80">
-                {notifications.length === 0 ? (
-                  <div className="p-12 text-center text-slate-400 text-sm font-medium">
-                    No unread notifications available. All items marked as seen.
-                  </div>
-                ) : (
-                  notifications.map((notif, idx) => (
-                    <div
-                      key={notif.id}
-                      className={`px-5 py-4 grid grid-cols-12 gap-3 text-xs items-center transition ${
-                        notif.checked ? "bg-amber-500/5" : "hover:bg-slate-800/50"
-                      }`}
+                  {/* Manual Go to page input field */}
+                  <form
+                    onSubmit={handleManualPageSubmit}
+                    className="flex items-center gap-1 ml-2"
+                  >
+                    <span className="text-xs text-[#9AA0AC]">Go to page:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max={totalPages}
+                      value={manualPageInput}
+                      onChange={(e) => setManualPageInput(e.target.value)}
+                      placeholder="#"
+                      className="w-12 bg-[#20232B] border border-[#2A2E38] rounded-lg px-2 py-1 text-xs text-center text-[#F5F6FA] font-sans focus:outline-none focus:border-[#5B8DEF]"
+                    />
+                    <button
+                      type="submit"
+                      className="px-2.5 py-1 rounded-lg bg-[#5B8DEF] text-white text-xs font-bold hover:bg-[#4A7CE4] transition cursor-pointer"
                     >
-                      {/* Sr. No */}
-                      <div className="col-span-1 font-mono font-bold text-slate-300">
-                        {idx + 1}
-                      </div>
-
-                      {/* Notification Message */}
-                      <div className="col-span-8 sm:col-span-9 text-slate-200 font-normal leading-relaxed">
-                        {notif.message}
-                      </div>
-
-                      {/* Action: View Details */}
-                      <div className="col-span-2 sm:col-span-1 text-center">
-                        <button
-                          onClick={() => {
-                            dispatch(openDetailModal(notif.record));
-                            // Mark as seen / remove from notification list
-                            setNotifications(notifications.filter((n) => n.id !== notif.id));
-                          }}
-                          className="px-3.5 py-1.5 rounded-lg border border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-950 font-bold text-xs transition cursor-pointer whitespace-nowrap shadow-sm"
-                        >
-                          View Details
-                        </button>
-                      </div>
-
-                      {/* Selection Checkbox */}
-                      <div className="col-span-1 text-right">
-                        <input
-                          type="checkbox"
-                          checked={notif.checked}
-                          onChange={(e) => {
-                            const checkedVal = e.target.checked;
-                            setNotifications(
-                              notifications.map((n) =>
-                                n.id === notif.id ? { ...n, checked: checkedVal } : n
-                              )
-                            );
-                          }}
-                          className="w-4 h-4 rounded border-slate-700 accent-amber-500 cursor-pointer"
-                        />
-                      </div>
-                    </div>
-                  ))
-                )}
+                      Go
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Bottom Copyright & Footer */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 text-[11px] text-slate-500 border-t border-slate-800/60">
-              <div className="flex items-center gap-1.5 font-bold text-white tracking-wider">
-                <span className="text-red-500 text-sm">ViTRIC</span>
-              </div>
-              <div>
-                © Insight is a Copyright to Vitric Business Solutions Pvt. Ltd. 2016 - Present. All rights reserved.
-              </div>
-            </div>
-          </motion.div>
+        {/* 5. SUPERADMIN CONTROLS TAB (§9) */}
+        {activeTab === "admin_panel" && activeUser?.role === "SUPER_ADMIN" && (
+          <SuperAdminDashboard
+            onSelectFeedback={(rec) => dispatch(openDetailModal(rec as any))}
+          />
         )}
       </main>
-
-      {/* DETAIL MODAL */}
-      <UserFeedbackDetailModal />
     </div>
   );
 };

@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Icon } from '@iconify/react';
+import React, { useState, useRef, useEffect } from "react";
+import { Icon } from "@iconify/react";
 
 interface AudioPlayerWidgetProps {
   audioUrl: string;
   title?: string;
   compact?: boolean;
-  theme?: 'amber' | 'emerald' | 'blue' | 'rose';
+  theme?: "amber" | "emerald" | "blue" | "rose";
 }
 
 export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
@@ -24,7 +24,8 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
 
   // Dynamic animation heights state for reactive waveform
   const [waveHeights, setWaveHeights] = useState<number[]>([
-    20, 35, 60, 45, 80, 50, 30, 90, 75, 40, 65, 85, 30, 50, 70, 40, 85, 95, 60, 40, 25, 55, 75, 90, 60, 35, 20
+    20, 35, 60, 45, 80, 50, 30, 90, 75, 40, 65, 85, 30, 50, 70, 40, 85, 95, 60,
+    40, 25, 55, 75, 90, 60, 35, 20,
   ]);
 
   // Theme color mappings
@@ -33,7 +34,8 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
       border: "border-amber-500/30",
       bgCompact: "bg-amber-500/10 text-amber-300 border-amber-500/30",
       playBtnCompact: "bg-amber-500 hover:bg-amber-400 text-slate-950",
-      playBtn: "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-lg shadow-amber-500/20",
+      playBtn:
+        "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-lg shadow-amber-500/20",
       titleText: "text-amber-400",
       waveActive: "bg-amber-400 shadow-sm shadow-amber-400/60",
       speedText: "text-amber-400 border-amber-500/30 bg-amber-500/10",
@@ -46,7 +48,8 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
       border: "border-emerald-500/30",
       bgCompact: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
       playBtnCompact: "bg-emerald-500 hover:bg-emerald-400 text-slate-950",
-      playBtn: "bg-gradient-to-r from-emerald-500 to-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20",
+      playBtn:
+        "bg-gradient-to-r from-emerald-500 to-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20",
       titleText: "text-emerald-400",
       waveActive: "bg-emerald-400 shadow-sm shadow-emerald-400/60",
       speedText: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
@@ -59,7 +62,8 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
       border: "border-blue-500/30",
       bgCompact: "bg-blue-500/10 text-blue-300 border-blue-500/30",
       playBtnCompact: "bg-blue-500 hover:bg-blue-400 text-white",
-      playBtn: "bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/20",
+      playBtn:
+        "bg-gradient-to-r from-blue-500 to-cyan-400 text-white shadow-lg shadow-blue-500/20",
       titleText: "text-blue-400",
       waveActive: "bg-blue-400 shadow-sm shadow-blue-400/60",
       speedText: "text-blue-400 border-blue-500/30 bg-blue-500/10",
@@ -72,7 +76,8 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
       border: "border-rose-500/30",
       bgCompact: "bg-rose-500/10 text-rose-300 border-rose-500/30",
       playBtnCompact: "bg-rose-500 hover:bg-rose-400 text-white",
-      playBtn: "bg-gradient-to-r from-rose-500 to-rose-400 text-white shadow-lg shadow-rose-500/20",
+      playBtn:
+        "bg-gradient-to-r from-rose-500 to-rose-400 text-white shadow-lg shadow-rose-500/20",
       titleText: "text-rose-400",
       waveActive: "bg-rose-400 shadow-sm shadow-rose-400/60",
       speedText: "text-rose-400 border-rose-500/30 bg-rose-500/10",
@@ -99,7 +104,7 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
           prev.map((val) => {
             const delta = (Math.random() - 0.5) * 40;
             return Math.max(15, Math.min(95, val + delta));
-          })
+          }),
         );
       }, 100);
     }
@@ -113,9 +118,10 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play()
+      audioRef.current
+        .play()
         .then(() => setIsPlaying(true))
-        .catch((err) => console.log('Audio playback error:', err));
+        .catch((err) => console.log("Audio playback error:", err));
     }
   };
 
@@ -177,12 +183,12 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
     if (isNaN(time) || !isFinite(time)) return "0:00";
     const mins = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (compact) {
     return (
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
         className={`inline-flex items-center gap-2 border rounded-full px-3 py-1 text-xs font-bold shadow-sm select-none ${t.bgCompact}`}
       >
@@ -191,7 +197,10 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
           onClick={togglePlay}
           className={`w-6 h-6 rounded-full flex items-center justify-center transition shrink-0 cursor-pointer ${t.playBtnCompact}`}
         >
-          <Icon icon={isPlaying ? "ph:pause-fill" : "ph:play-fill"} className="w-3.5 h-3.5" />
+          <Icon
+            icon={isPlaying ? "ph:pause-fill" : "ph:play-fill"}
+            className="w-3.5 h-3.5"
+          />
         </button>
 
         {/* Animated Waveform indicator */}
@@ -203,13 +212,15 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
                 isPlaying ? t.wavePassed : t.waveUnplayed
               }`}
               style={{
-                height: isPlaying ? `${Math.floor(h * 0.15 + 4)}px` : '4px',
+                height: isPlaying ? `${Math.floor(h * 0.15 + 4)}px` : "4px",
               }}
             />
           ))}
         </div>
 
-        <span className={`text-[11px] font-mono font-extrabold ${t.textCompact}`}>
+        <span
+          className={`text-[11px] font-sans font-extrabold ${t.textCompact}`}
+        >
           {isPlaying ? formatTime(currentTime) : "Voice Note"}
         </span>
 
@@ -225,7 +236,7 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
   }
 
   return (
-    <div 
+    <div
       onClick={(e) => e.stopPropagation()}
       className={`bg-slate-900/90 backdrop-blur-md border ${t.border} rounded-2xl p-4 text-white shadow-xl space-y-3.5 select-none`}
     >
@@ -236,15 +247,22 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
             onClick={togglePlay}
             className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black transition cursor-pointer active:scale-95 shrink-0 ${t.playBtn}`}
           >
-            <Icon icon={isPlaying ? "ph:pause-fill" : "ph:play-fill"} className="w-6 h-6" />
+            <Icon
+              icon={isPlaying ? "ph:pause-fill" : "ph:play-fill"}
+              className="w-6 h-6"
+            />
           </button>
           <div>
-            <div className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${t.titleText}`}>
+            <div
+              className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${t.titleText}`}
+            >
               <Icon icon="ph:microphone-fill" className="w-4 h-4" />
               <span>{title}</span>
             </div>
             <div className="text-xs text-slate-400 font-medium">
-              {isPlaying ? "Playing Audio Feedback..." : "Click play to listen to patient recording"}
+              {isPlaying
+                ? "Playing Audio Feedback..."
+                : "Click play to listen to patient recording"}
             </div>
           </div>
         </div>
@@ -262,8 +280,19 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
 
           {/* Volume Control */}
           <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/60 rounded-xl px-2.5 py-1">
-            <button type="button" onClick={toggleMute} className="text-slate-400 hover:text-white cursor-pointer">
-              <Icon icon={isMuted || volume === 0 ? "ph:speaker-x-bold" : "ph:speaker-high-bold"} className="w-4 h-4" />
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="text-slate-400 hover:text-white cursor-pointer"
+            >
+              <Icon
+                icon={
+                  isMuted || volume === 0
+                    ? "ph:speaker-x-bold"
+                    : "ph:speaker-high-bold"
+                }
+                className="w-4 h-4"
+              />
             </button>
             <input
               type="range"
@@ -289,9 +318,7 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
             <span
               key={idx}
               className={`w-1 rounded-full transition-all duration-150 ${
-                isPassed
-                  ? t.waveActive
-                  : 'bg-slate-800'
+                isPassed ? t.waveActive : "bg-slate-800"
               }`}
               style={{
                 height: isPlaying
@@ -314,7 +341,7 @@ export const AudioPlayerWidget: React.FC<AudioPlayerWidgetProps> = ({
           onChange={handleSeek}
           className={`w-full bg-slate-800 h-1.5 rounded-lg cursor-pointer ${t.rangeAccent}`}
         />
-        <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+        <div className="flex items-center justify-between text-[11px] font-sans text-slate-400">
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>

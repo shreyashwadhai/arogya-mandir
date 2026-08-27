@@ -3,6 +3,7 @@ import { useDispatch } from "react-redux";
 import { loginAdmin } from "../../redux/features/adminSlice";
 import { motion } from "framer-motion";
 import { Icon } from "@iconify/react";
+import { AuthService } from "../../services/authService";
 
 interface AdminLoginPageProps {
   onBackToPatientForm: () => void;
@@ -13,197 +14,181 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
 }) => {
   const dispatch = useDispatch();
 
-  const envEmail = import.meta.env.VITE_ADMIN_EMAIL;
-  const envPassword = import.meta.env.VITE_ADMIN_PASSWORD;
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
     setIsLoading(true);
 
     setTimeout(() => {
-      if (
-        email.trim().toLowerCase() === envEmail.toLowerCase() &&
-        password === envPassword
-      ) {
-        dispatch(loginAdmin(envEmail));
-        setIsLoading(false);
+      const user = AuthService.loginByEmail(email);
+      if (user) {
+        dispatch(loginAdmin(user.email));
       } else {
         setErrorMsg(
-          "Invalid email or password. Please verify credentials configured in  file.",
+          "Invalid email address or password. Please verify your credentials or contact the Nodal Administrator.",
         );
-        setIsLoading(false);
       }
+      setIsLoading(false);
     }, 400);
   };
 
-  const handleQuickFill = () => {
-    setEmail(envEmail);
-    setPassword(envPassword);
-    setErrorMsg("");
-  };
-
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#0A101D] via-[#0D1527] to-[#040812] text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
-      {/* Executive Clean Header */}
-      <header className="w-full bg-[#070D1B]/40 backdrop-blur-md border-b border-slate-800/60 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 z-10">
-        <div className="flex items-center gap-3">
-          <div className=" rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-            <div className="w-10 h-10 border border-white rounded-full text-white flex items-center justify-center shrink-0 shadow-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                className="w-6 h-6"
-              >
-                <path d="M0 0h24v24H0z" fill="none" />
-                <g
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.5"
-                >
-                  <path d="M9.349 3.434a2.684 2.684 0 1 0 5.368 0a2.684 2.684 0 0 0-5.368 0m5.881 9.191a1.888 1.888 0 0 1 1.807 2.523m-5.004-9.03V23.25" />
-                  <path d="M14.494 4.5h7.889c2.677 0-1.2 6.453-6.772 4.3M9.569 4.5H1.682c-2.676 0 1.2 6.453 6.772 4.3m.381 3.825A1.9 1.9 0 0 0 6.916 14.5a1.975 1.975 0 0 0 1.919 1.964h5.116a1.92 1.92 0 0 1 0 3.838h-3.517a1.64 1.64 0 0 0-1.6 1.675a1.7 1.7 0 0 0 .531 1.247" />
-                </g>
-              </svg>
-            </div>
+    <div className="min-h-screen w-full bg-[#0F1115] text-[#F5F6FA] flex flex-col items-center justify-center p-3 sm:p-6 lg:p-8 font-sans selection:bg-[#3498DB] selection:text-white relative overflow-x-hidden">
+      {/* Background Ambient Glow Spheres */}
+      <div className="absolute top-[-10%] left-[-10%] w-[550px] h-[550px] rounded-full bg-[#0093E9]/15 blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[550px] h-[550px] rounded-full bg-[#7C5CFC]/15 blur-[140px] pointer-events-none" />
+
+      {/* MAIN MODAL UI CONTAINER */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="w-full max-w-5xl bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-700/20 flex flex-col md:flex-row z-10 my-auto min-h-[560px]"
+      >
+        {/* LEFT SIDE PANEL - Blue Vibrant Banner & AI Illustration */}
+        <div className="hidden md:flex  flex-col justify-between items-center w-full md:w-1/2 bg-gradient-to-br from-[#1C82AD] via-[#0093E9] to-[#00B4DB] text-white p-6 sm:p-8 lg:p-10  relative overflow-hidden min-h-[380px] md:min-h-[560px]">
+          {/* Decorative ripples */}
+          <div className="absolute top-[-20%] left-[-20%] w-[450px] h-[450px] rounded-full bg-white/10 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-black/10 blur-2xl pointer-events-none" />
+
+          {/* Top Header Badge */}
+          <div className="w-full flex items-center justify-between z-10">
+            <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[11px] font-bold tracking-wider border border-white/30 flex items-center gap-1.5 shadow-sm">
+              <Icon
+                icon="ph:shield-check-bold"
+                className="w-3.5 h-3.5 text-white"
+              />
+              Delhi State Health Mission
+            </span>
           </div>
-          <div>
-            <div className="text-[10px] tracking-widest text-slate-400 font-semibold">
-              Government Of India • Ministry Of Health
+
+          {/* Center AI Generated Illustration & Intro Text */}
+          <div className="flex flex-col items-center text-center my-auto py-4 max-w-md z-10">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="w-full rounded-2xl overflow-hidden shadow-2xl border-2 border-white/30 bg-white/10 backdrop-blur-sm mb-5 group"
+            >
+              <img
+                src="/cmo_login_illustration.jpg"
+                alt="Arogya Mandir Healthcare Administration"
+                className="w-full h-auto object-cover max-h-[220px] sm:max-h-[240px] group-hover:scale-105 transition-transform duration-500"
+              />
+            </motion.div>
+
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-tight mb-2">
+              Welcome to Arogya Mandir Governance Portal
+            </h1>
+            <p className="text-xs text-white/90 font-medium leading-relaxed max-w-sm">
+              Log in to monitor state health facilities, manage CMO hierarchy,
+              process patient feedback, and review real-time SLA performance.
+            </p>
+          </div>
+
+          {/* Bottom Feature Badges Grid */}
+          <div className="w-full grid grid-cols-3 gap-1 pt-4 border-t border-white/20 z-10 text-center">
+            <div className="flex flex-col items-center p-1">
+              <div className="w-7 h-7 rounded-full bg-white/20 border border-white/30 flex items-center justify-center mb-1 shadow-inner">
+                <Icon icon="arcticons:multi-app" className="w-4.5 h-4.5 text-white" />
+              </div>
+              <span className="text-[10px] font-semibold text-white/95 leading-tight">
+                Multi-Tier CMO
+              </span>
             </div>
-            <div className="text-sm font-bold text-white tracking-wide">
-              Arogya Mandir Administrative Node
+
+            <div className="flex flex-col items-center p-1 border-x border-white/20">
+              <div className="w-7 h-7 rounded-full bg-white/20 border border-white/30 flex items-center justify-center mb-1 shadow-inner">
+                <Icon icon="glyphs:analytics-duo" className="w-4.5 h-4.5 text-white" />
+              </div>
+              <span className="text-[10px] font-semibold text-white/95 leading-tight">
+              Analytics Data
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center p-1">
+              <div className="w-7 h-7 rounded-full bg-white/20 border border-white/30 flex items-center justify-center mb-1 shadow-inner">
+                <Icon icon="fluent:person-feedback-20-regular" className="w-4.5 h-4.5 text-white" />
+              </div>
+              <span className="text-[10px] font-semibold text-white/95 leading-tight">
+                Feedback Review
+              </span>
             </div>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onBackToPatientForm}
-          className="self-end sm:self-auto px-4 py-2 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 text-xs font-bold transition-all duration-200 flex items-center gap-2 border border-slate-700/60 hover:border-slate-500/50 cursor-pointer hover:shadow-lg active:scale-95"
-        >
-          <Icon
-            icon="ph:arrow-left-bold"
-            className="w-3.5 h-3.5 text-blue-400"
-          />
-          <span>Back to Form</span>
-        </button>
-      </header>
-
-      {/* Main Container */}
-      <main className="flex-1 flex items-center justify-center p-4 md:p-8 relative">
-        {/* Background decorative glow spots */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-[100px] pointer-events-none" />
-
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="w-full max-w-[460px] bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 rounded-4xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] p-4 sm:p-10 space-y-6 text-center z-10"
-        >
-          {/* Logo Brand Icon */}
-          <div className=" w-14 h-14 mx-auto rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-            <div className="w-14 h-14 border border-white rounded-full text-white flex items-center justify-center shrink-0 shadow-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                className="w-8 h-8"
-              >
-                <path d="M0 0h24v24H0z" fill="none" />
-                <g
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.5"
-                >
-                  <path d="M9.349 3.434a2.684 2.684 0 1 0 5.368 0a2.684 2.684 0 0 0-5.368 0m5.881 9.191a1.888 1.888 0 0 1 1.807 2.523m-5.004-9.03V23.25" />
-                  <path d="M14.494 4.5h7.889c2.677 0-1.2 6.453-6.772 4.3M9.569 4.5H1.682c-2.676 0 1.2 6.453 6.772 4.3m.381 3.825A1.9 1.9 0 0 0 6.916 14.5a1.975 1.975 0 0 0 1.919 1.964h5.116a1.92 1.92 0 0 1 0 3.838h-3.517a1.64 1.64 0 0 0-1.6 1.675a1.7 1.7 0 0 0 .531 1.247" />
-                </g>
-              </svg>
+        {/* RIGHT SIDE PANEL - Clean White Form Layout */}
+        <div className="w-full md:w-1/2 bg-white text-[#2C3E50] p-6 sm:p-8 lg:p-10 flex flex-col justify-between items-center min-h-[460px] md:min-h-[560px]">
+          {/* Top Emblem Header */}
+          <div className="w-full flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-14 h-14 rounded-full p-0.5 bg-gradient-to-br from-[#E67E22] to-[#F39C12] text-white flex items-center justify-center shadow-md">
+                <Icon
+                  icon="healthicons:health-vulnerability-through-social-determinants-outline"
+                  className="w-12 h-12"
+                />
+              </div>
+              <div className="text-center">
+                <div className="text-md sm:text-xl font-extrabold text-[#2C3E50] tracking-wide flex items-center gap-2">
+                  <span>Arogya Mandir</span>
+                </div>
+                <div className="text-[10px] text-[#7F8C8D] font-medium">
+                  State Health Portal
+                </div>
+              </div>
             </div>
           </div>
 
-          <div>
-            <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-extrabold uppercase tracking-widest border border-blue-500/20">
-              Executive Authentication
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white mt-3 leading-tight tracking-tight">
-              CMO Portal Sign In
-            </h2>
-            <p className="text-xs text-slate-400 mt-2 font-medium leading-relaxed max-w-[320px] mx-auto">
-              Please enter your official administrator credentials to access
-              live patient telemetry.
-            </p>
-          </div>
+          {/* Main Form Box */}
+          <div className="w-full max-w-sm my-auto py-4 space-y-5">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-extrabold text-[#2C3E50] tracking-tight">
+                Sign In
+              </h2>
+              <p className="text-xs text-[#7F8C8D]">
+                Enter your registered CMO credentials to access the governance
+                desk.
+              </p>
+            </div>
 
-          {/* Form Container */}
-          <div className="bg-white text-slate-900 rounded-[24px] p-4 sm:p-6 shadow-2xl text-left space-y-4">
-            {errorMsg && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 flex items-start gap-2"
-              >
-                <Icon
-                  icon="ph:warning-circle-fill"
-                  className="w-4 h-4 text-red-600 shrink-0 mt-0.5"
-                />
-                <span>{errorMsg}</span>
-              </motion.div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 pl-1">
-                  Official Email Address
+                <label className="block text-xs font-bold text-[#34495E] mb-1">
+                  Email Address <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter email address"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-4 text-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all duration-200"
-                  />
-                  <Icon
-                    icon="ph:envelope-simple-bold"
-                    className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"
-                  />
-                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter official email address"
+                  className="w-full bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#3498DB] focus:ring-2 focus:ring-[#3498DB]/20 rounded-xl px-3.5 py-2.5 text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none transition shadow-sm"
+                  required
+                />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 pl-1">
-                  Access Key / Password
+                <label className="block text-xs font-bold text-[#34495E] mb-1">
+                  Password <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-10 text-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all duration-200"
-                  />
-                  <Icon
-                    icon="ph:lock-key-bold"
-                    className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"
+                    className="w-full bg-[#F8FAFC] border border-[#CBD5E1] focus:border-[#3498DB] focus:ring-2 focus:ring-[#3498DB]/20 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-[#1E293B] placeholder-[#94A3B8] focus:outline-none transition shadow-sm"
+                    required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#94A3B8] hover:text-[#34495E] cursor-pointer"
                   >
                     <Icon
                       icon={showPassword ? "ph:eye-slash-bold" : "ph:eye-bold"}
@@ -213,39 +198,44 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                 </div>
               </div>
 
+              {errorMsg && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2"
+                >
+                  <Icon
+                    icon="ph:warning-circle-fill"
+                    className="w-4 h-4 text-red-500 shrink-0"
+                  />
+                  <span>{errorMsg}</span>
+                </motion.div>
+              )}
+
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg hover:shadow-blue-500/10 flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.99] cursor-pointer disabled:opacity-50 mt-2"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#F39C12] to-[#E67E22] hover:from-[#E67E22] hover:to-[#D35400] text-white font-extrabold text-xs tracking-wider uppercase transition cursor-pointer shadow-lg shadow-[#E67E22]/25 flex items-center justify-center gap-2"
               >
                 {isLoading ? (
-                  <>
-                    <Icon
-                      icon="ph:spinner-gap-bold"
-                      className="w-4 h-4 animate-spin"
-                    />
-                    <span>Verifying Access Card...</span>
-                  </>
+                  <Icon
+                    icon="ph:spinner-bold"
+                    className="w-4 h-4 animate-spin"
+                  />
                 ) : (
-                  <>
-                    <Icon
-                      icon="ph:sign-in-bold"
-                      className="w-4 h-4 text-white"
-                    />
-                    <span>Sign In to CMO Node</span>
-                  </>
+                  <Icon icon="ph:sign-in-bold" className="w-4 h-4" />
                 )}
+                <span>LOGIN</span>
               </button>
             </form>
           </div>
 
-          <div className="text-[10px] text-slate-500 font-medium pt-3 border-t border-slate-800/80 leading-relaxed">
-            Authorized Personnel Only. Transactions are monitored & audited.{" "}
-            <br />
-            Arogya Mandir Digital Health Initiative • GOVT. OF INDIA
+          {/* Footer info */}
+          <div className="w-full text-center text-[11px] text-[#95A5A6] pt-3 border-t border-slate-100">
+            <span>Arogya Mandir State Health Mission • Encrypted Access</span>
           </div>
-        </motion.div>
-      </main>
+        </div>
+      </motion.div>
     </div>
   );
 };

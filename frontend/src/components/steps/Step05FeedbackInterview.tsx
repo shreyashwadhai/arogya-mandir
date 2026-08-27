@@ -1,24 +1,23 @@
-import React, { useState, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import type { RootState } from '../../redux/store';
+import React, { useState, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../../redux/store";
 import {
   setCurrentStep,
   nextQuestion,
   previousQuestion,
   updateFeedbackResponses,
-  generateNewTrackingId
-} from '../../redux/features/journeySlice';
-import { translations } from '../../translations/languages';
-import { CouldBeBetterBottomSheet } from '../CouldBeBetterBottomSheet';
-import { motion } from 'framer-motion';
-import { Icon } from '@iconify/react';
-import confetti from 'canvas-confetti';
+  generateNewTrackingId,
+} from "../../redux/features/journeySlice";
+import { translations } from "../../translations/languages";
+import { CouldBeBetterBottomSheet } from "../CouldBeBetterBottomSheet";
+import { motion } from "framer-motion";
+import { Icon } from "@iconify/react";
+import confetti from "canvas-confetti";
 
 export const Step05FeedbackInterview: React.FC = () => {
   const dispatch = useDispatch();
-  const { currentQuestionIndex, feedbackResponses, selectedLanguage } = useSelector(
-    (state: RootState) => state.journey
-  );
+  const { currentQuestionIndex, feedbackResponses, selectedLanguage } =
+    useSelector((state: RootState) => state.journey);
   const t = translations[selectedLanguage] || translations.en;
   const currentQ = t.questions[currentQuestionIndex];
   const totalQuestions = t.questions.length;
@@ -28,7 +27,9 @@ export const Step05FeedbackInterview: React.FC = () => {
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTimer, setRecordingTimer] = useState(0);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null,
+  );
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -37,7 +38,9 @@ export const Step05FeedbackInterview: React.FC = () => {
   const timerIntervalRef = useRef<any>(null);
 
   // Sound wave visualization state & refs (9 bars for rich equalizer visualizer)
-  const [audioLevels, setAudioLevels] = useState<number[]>([6, 8, 12, 18, 24, 18, 12, 8, 6]);
+  const [audioLevels, setAudioLevels] = useState<number[]>([
+    6, 8, 12, 18, 24, 18, 12, 8, 6,
+  ]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
@@ -45,98 +48,126 @@ export const Step05FeedbackInterview: React.FC = () => {
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   // Detect supported audio MIME type
   const getSupportedMimeType = () => {
-    if (typeof MediaRecorder === 'undefined') return '';
+    if (typeof MediaRecorder === "undefined") return "";
     const types = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/mp4',
-      'audio/aac',
-      'audio/ogg;codecs=opus',
-      'audio/wav'
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/aac",
+      "audio/ogg;codecs=opus",
+      "audio/wav",
     ];
     for (const t of types) {
       if (MediaRecorder.isTypeSupported(t)) return t;
     }
-    return '';
+    return "";
   };
 
   // Category Icon helper
   const getCategoryIcon = (idx: number) => {
     const q = t.questions[idx];
-    if (!q) return 'ph:question-bold';
-    if (q.category?.includes('DOCTOR') || q.category?.includes('MEDICAL')) return 'ph:stethoscope-bold';
-    if (q.category?.includes('PHARMACY') || q.category?.includes('DISPENSARY')) return 'ph:pill-bold';
-    if (q.category?.includes('MEDICINE')) return 'ph:first-aid-kit-bold';
-    if (q.category?.includes('CLEANLINESS')) return 'ph:sparkles-bold';
-    return 'ph:chat-teardrop-text-bold';
+    if (!q) return "ph:question-bold";
+    if (q.category?.includes("DOCTOR") || q.category?.includes("MEDICAL"))
+      return "ph:stethoscope-bold";
+    if (q.category?.includes("PHARMACY") || q.category?.includes("DISPENSARY"))
+      return "ph:pill-bold";
+    if (q.category?.includes("MEDICINE")) return "ph:first-aid-kit-bold";
+    if (q.category?.includes("CLEANLINESS")) return "ph:sparkles-bold";
+    return "ph:chat-teardrop-text-bold";
   };
 
   // Helper for Rating Questions
   const getRatingFieldForQIndex = (idx: number) => {
     const q = t.questions[idx];
-    if (!q || q.type !== 'rating') return null;
+    if (!q || q.type !== "rating") return null;
 
     switch (idx) {
       case 0:
-        return { ratingKey: 'doctorRating', commentsKey: 'doctorComments' };
+        return { ratingKey: "doctorRating", commentsKey: "doctorComments" };
       case 1:
-        return { ratingKey: 'pharmacyRating', commentsKey: 'pharmacyComments' };
+        return { ratingKey: "pharmacyRating", commentsKey: "pharmacyComments" };
       case 2:
-        return { ratingKey: 'prescribedMedicinesAvailable', commentsKey: 'medicinesComments' };
+        return {
+          ratingKey: "prescribedMedicinesAvailable",
+          commentsKey: "medicinesComments",
+        };
       case 3:
-        return { ratingKey: 'cleanlinessRating', commentsKey: 'cleanlinessComments' };
+        return {
+          ratingKey: "cleanlinessRating",
+          commentsKey: "cleanlinessComments",
+        };
       default:
-        if (q.category?.includes('DOCTOR') || q.category?.includes('MEDICAL')) {
-          return { ratingKey: 'doctorRating', commentsKey: 'doctorComments' };
+        if (q.category?.includes("DOCTOR") || q.category?.includes("MEDICAL")) {
+          return { ratingKey: "doctorRating", commentsKey: "doctorComments" };
         }
-        if (q.category?.includes('PHARMACY')) {
-          return { ratingKey: 'pharmacyRating', commentsKey: 'pharmacyComments' };
+        if (q.category?.includes("PHARMACY")) {
+          return {
+            ratingKey: "pharmacyRating",
+            commentsKey: "pharmacyComments",
+          };
         }
-        if (q.category?.includes('MEDICINE')) {
-          return { ratingKey: 'prescribedMedicinesAvailable', commentsKey: 'medicinesComments' };
+        if (q.category?.includes("MEDICINE")) {
+          return {
+            ratingKey: "prescribedMedicinesAvailable",
+            commentsKey: "medicinesComments",
+          };
         }
-        if (q.category?.includes('CLEANLINESS')) {
-          return { ratingKey: 'cleanlinessRating', commentsKey: 'cleanlinessComments' };
+        if (q.category?.includes("CLEANLINESS")) {
+          return {
+            ratingKey: "cleanlinessRating",
+            commentsKey: "cleanlinessComments",
+          };
         }
-        return { ratingKey: 'doctorRating', commentsKey: 'doctorComments' };
+        return { ratingKey: "doctorRating", commentsKey: "doctorComments" };
     }
   };
 
   const currentRatingInfo = getRatingFieldForQIndex(currentQuestionIndex);
-  const currentRatingVal = currentRatingInfo ? ((feedbackResponses as any)[currentRatingInfo.ratingKey] || '') : '';
-  const currentCommentsVal = currentRatingInfo ? ((feedbackResponses as any)[currentRatingInfo.commentsKey] || '') : '';
+  const currentRatingVal = currentRatingInfo
+    ? (feedbackResponses as any)[currentRatingInfo.ratingKey] || ""
+    : "";
+  const currentCommentsVal = currentRatingInfo
+    ? (feedbackResponses as any)[currentRatingInfo.commentsKey] || ""
+    : "";
 
-  const handleRatingSelect = (rating: 'Could Be Better' | 'Acceptable' | 'Excellent') => {
+  const handleRatingSelect = (
+    rating: "Could Be Better" | "Acceptable" | "Excellent",
+  ) => {
     if (!currentRatingInfo) return;
-    dispatch(updateFeedbackResponses({ [currentRatingInfo.ratingKey]: rating }));
+    dispatch(
+      updateFeedbackResponses({ [currentRatingInfo.ratingKey]: rating }),
+    );
 
-    if (rating === 'Acceptable' || rating === 'Excellent') {
+    if (rating === "Acceptable" || rating === "Excellent") {
       setTimeout(() => {
         handleNext();
       }, 400);
-    } else if (rating === 'Could Be Better') {
+    } else if (rating === "Could Be Better") {
       setIsBottomSheetOpen(true);
     }
   };
 
   const handleCommentsChange = (text: string) => {
     if (!currentRatingInfo) return;
-    dispatch(updateFeedbackResponses({ [currentRatingInfo.commentsKey]: text }));
+    dispatch(
+      updateFeedbackResponses({ [currentRatingInfo.commentsKey]: text }),
+    );
   };
 
   // Helper for Text Questions
   const getTextInfoForQIndex = (idx: number) => {
     const q = t.questions[idx];
-    if (!q || q.type !== 'text') return null;
+    if (!q || q.type !== "text") return null;
     return {
-      value: feedbackResponses.additionalSuggestions || '',
-      onChange: (val: string) => dispatch(updateFeedbackResponses({ additionalSuggestions: val })),
-      placeholder: q.description || 'Type suggestions or comments here...'
+      value: feedbackResponses.additionalSuggestions || "",
+      onChange: (val: string) =>
+        dispatch(updateFeedbackResponses({ additionalSuggestions: val })),
+      placeholder: q.description || "Type suggestions or comments here...",
     };
   };
 
@@ -145,23 +176,55 @@ export const Step05FeedbackInterview: React.FC = () => {
   const getMediaFieldKeysForQIndex = (idx: number) => {
     const q = t.questions[idx];
     switch (idx) {
-      case 0: return { audioKey: 'doctorAudioUrl', imageKey: 'doctorImageUrl' };
-      case 1: return { audioKey: 'pharmacyAudioUrl', imageKey: 'pharmacyImageUrl' };
-      case 2: return { audioKey: 'medicinesAudioUrl', imageKey: 'medicinesImageUrl' };
-      case 3: return { audioKey: 'cleanlinessAudioUrl', imageKey: 'cleanlinessImageUrl' };
-      case 4: return { audioKey: 'suggestionAudioUrl', imageKey: 'suggestionImageUrl' };
+      case 0:
+        return { audioKey: "doctorAudioUrl", imageKey: "doctorImageUrl" };
+      case 1:
+        return { audioKey: "pharmacyAudioUrl", imageKey: "pharmacyImageUrl" };
+      case 2:
+        return { audioKey: "medicinesAudioUrl", imageKey: "medicinesImageUrl" };
+      case 3:
+        return {
+          audioKey: "cleanlinessAudioUrl",
+          imageKey: "cleanlinessImageUrl",
+        };
+      case 4:
+        return {
+          audioKey: "suggestionAudioUrl",
+          imageKey: "suggestionImageUrl",
+        };
       default:
-        if (q?.category?.includes('DOCTOR')) return { audioKey: 'doctorAudioUrl', imageKey: 'doctorImageUrl' };
-        if (q?.category?.includes('PHARMACY')) return { audioKey: 'pharmacyAudioUrl', imageKey: 'pharmacyImageUrl' };
-        if (q?.category?.includes('MEDICINE')) return { audioKey: 'medicinesAudioUrl', imageKey: 'medicinesImageUrl' };
-        if (q?.category?.includes('CLEANLINESS')) return { audioKey: 'cleanlinessAudioUrl', imageKey: 'cleanlinessImageUrl' };
-        return { audioKey: 'suggestionAudioUrl', imageKey: 'suggestionImageUrl' };
+        if (q?.category?.includes("DOCTOR"))
+          return { audioKey: "doctorAudioUrl", imageKey: "doctorImageUrl" };
+        if (q?.category?.includes("PHARMACY"))
+          return { audioKey: "pharmacyAudioUrl", imageKey: "pharmacyImageUrl" };
+        if (q?.category?.includes("MEDICINE"))
+          return {
+            audioKey: "medicinesAudioUrl",
+            imageKey: "medicinesImageUrl",
+          };
+        if (q?.category?.includes("CLEANLINESS"))
+          return {
+            audioKey: "cleanlinessAudioUrl",
+            imageKey: "cleanlinessImageUrl",
+          };
+        return {
+          audioKey: "suggestionAudioUrl",
+          imageKey: "suggestionImageUrl",
+        };
     }
   };
 
   const currentMediaKeys = getMediaFieldKeysForQIndex(currentQuestionIndex);
-  const currentAudioUrl = currentMediaKeys ? feedbackResponses[currentMediaKeys.audioKey as keyof typeof feedbackResponses] as string | null : null;
-  const currentImageUrl = currentMediaKeys ? feedbackResponses[currentMediaKeys.imageKey as keyof typeof feedbackResponses] as string | null : null;
+  const currentAudioUrl = currentMediaKeys
+    ? (feedbackResponses[
+        currentMediaKeys.audioKey as keyof typeof feedbackResponses
+      ] as string | null)
+    : null;
+  const currentImageUrl = currentMediaKeys
+    ? (feedbackResponses[
+        currentMediaKeys.imageKey as keyof typeof feedbackResponses
+      ] as string | null)
+    : null;
 
   // Pure Microphone recording logic - captures user's exact original voice
   const startRecording = async () => {
@@ -170,18 +233,21 @@ export const Step05FeedbackInterview: React.FC = () => {
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setMicError('Voice recording is not supported on this browser.');
+        setMicError("Voice recording is not supported on this browser.");
         return;
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = getSupportedMimeType();
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       const chunks: Blob[] = [];
 
       // Connect Web Audio Analyser to render live dynamic sound waves
       try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        const AudioCtx =
+          window.AudioContext || (window as any).webkitAudioContext;
         if (AudioCtx) {
           const audioCtx = new AudioCtx();
           audioContextRef.current = audioCtx;
@@ -211,7 +277,7 @@ export const Step05FeedbackInterview: React.FC = () => {
           updateWave();
         }
       } catch (err) {
-        console.warn('Web Audio visualizer initialization failed:', err);
+        console.warn("Web Audio visualizer initialization failed:", err);
       }
 
       recorder.ondataavailable = (e) => {
@@ -225,18 +291,22 @@ export const Step05FeedbackInterview: React.FC = () => {
           animFrameRef.current = null;
         }
         if (audioContextRef.current) {
-          try { audioContextRef.current.close(); } catch {}
+          try {
+            audioContextRef.current.close();
+          } catch {}
           audioContextRef.current = null;
         }
 
-        const actualMime = recorder.mimeType || mimeType || 'audio/webm';
+        const actualMime = recorder.mimeType || mimeType || "audio/webm";
         const audioBlob = new Blob(chunks, { type: actualMime });
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64Audio = reader.result as string;
           const mediaKeys = getMediaFieldKeysForQIndex(currentQuestionIndex);
           if (mediaKeys) {
-            dispatch(updateFeedbackResponses({ [mediaKeys.audioKey]: base64Audio }));
+            dispatch(
+              updateFeedbackResponses({ [mediaKeys.audioKey]: base64Audio }),
+            );
           }
         };
         reader.readAsDataURL(audioBlob);
@@ -253,7 +323,9 @@ export const Step05FeedbackInterview: React.FC = () => {
         setRecordingTimer((prev) => prev + 1);
       }, 1000);
     } catch {
-      setMicError('Microphone access blocked. Please allow mic permissions in your browser to record your voice.');
+      setMicError(
+        "Microphone access blocked. Please allow mic permissions in your browser to record your voice.",
+      );
     }
   };
 
@@ -263,7 +335,9 @@ export const Step05FeedbackInterview: React.FC = () => {
       animFrameRef.current = null;
     }
     if (audioContextRef.current) {
-      try { audioContextRef.current.close(); } catch {}
+      try {
+        audioContextRef.current.close();
+      } catch {}
       audioContextRef.current = null;
     }
 
@@ -274,7 +348,7 @@ export const Step05FeedbackInterview: React.FC = () => {
     setIsRecording(false);
 
     const recorder = mediaRecorderRef.current || mediaRecorder;
-    if (recorder && recorder.state !== 'inactive') {
+    if (recorder && recorder.state !== "inactive") {
       recorder.stop();
       mediaRecorderRef.current = null;
       setMediaRecorder(null);
@@ -312,7 +386,9 @@ export const Step05FeedbackInterview: React.FC = () => {
     }
   };
 
-  const handleSuggestionImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSuggestionImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -335,13 +411,13 @@ export const Step05FeedbackInterview: React.FC = () => {
 
   // Determine if Save & Continue button should be enabled
   const getIsSaveDisabled = () => {
-    if (currentQ?.type === 'choice') {
+    if (currentQ?.type === "choice") {
       return !feedbackResponses.userRole;
     }
-    if (currentQ?.type === 'rating') {
+    if (currentQ?.type === "rating") {
       return !currentRatingVal;
     }
-    if (currentQ?.type === 'text') {
+    if (currentQ?.type === "text") {
       return false;
     }
     return false;
@@ -352,7 +428,10 @@ export const Step05FeedbackInterview: React.FC = () => {
       {/* MIC ERROR ALERT BANNER */}
       {micError && (
         <div className="p-3 bg-red-950/80 border border-red-500/50 rounded-2xl text-[11px] font-semibold text-red-300 flex items-start gap-2 text-left mt-2">
-          <Icon icon="ph:warning-bold" className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <Icon
+            icon="ph:warning-bold"
+            className="w-4 h-4 text-red-400 shrink-0 mt-0.5"
+          />
           <span>{micError}</span>
         </div>
       )}
@@ -371,11 +450,12 @@ export const Step05FeedbackInterview: React.FC = () => {
             ))}
           </div>
 
-          <div className="text-2xl font-black font-mono text-slate-900">
+          <div className="text-2xl font-black font-sans text-slate-900">
             0:{recordingTimer.toString().padStart(2, "0")}
           </div>
           <p className="text-xs font-bold text-slate-700">
-            {t.bottomSheet?.listeningText || "सुन रहे हैं... दोबारा दबाकर रोकें"}
+            {t.bottomSheet?.listeningText ||
+              "सुन रहे हैं... दोबारा दबाकर रोकें"}
           </p>
 
           <button
@@ -405,11 +485,16 @@ export const Step05FeedbackInterview: React.FC = () => {
               </button>
               <div className="text-left">
                 <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                  <Icon icon="ph:microphone-fill" className="w-3.5 h-3.5 text-slate-200" />
+                  <Icon
+                    icon="ph:microphone-fill"
+                    className="w-3.5 h-3.5 text-slate-200"
+                  />
                   <span>Voice Note Recorded</span>
                 </div>
                 <div className="text-[11px] text-slate-300 font-medium">
-                  {isPlayingAudio ? "Playing voice note..." : "Click play to listen"}
+                  {isPlayingAudio
+                    ? "Playing voice note..."
+                    : "Click play to listen"}
                 </div>
               </div>
             </div>
@@ -437,7 +522,9 @@ export const Step05FeedbackInterview: React.FC = () => {
             src={currentAudioUrl}
             onTimeUpdate={() => {
               if (audioRef.current && audioRef.current.duration) {
-                const pct = (audioRef.current.currentTime / audioRef.current.duration) * 100;
+                const pct =
+                  (audioRef.current.currentTime / audioRef.current.duration) *
+                  100;
                 setAudioProgress(pct);
               }
             }}
@@ -467,7 +554,8 @@ export const Step05FeedbackInterview: React.FC = () => {
             <Icon icon="ph:x-bold" className="w-3.5 h-3.5" />
           </button>
           <div className="absolute bottom-1.5 left-2 bg-teal-950/90 text-teal-300 px-2 py-0.5 rounded-md text-[10px] font-bold border border-teal-500/40 flex items-center gap-1">
-            <Icon icon="ph:image-bold" className="w-3 h-3 text-teal-400" /> Attached Photo
+            <Icon icon="ph:image-bold" className="w-3 h-3 text-teal-400" />{" "}
+            Attached Photo
           </div>
         </div>
       )}
@@ -489,7 +577,9 @@ export const Step05FeedbackInterview: React.FC = () => {
           )}
 
           {!currentImageUrl && (
-            <label className={`p-2.5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-teal-500/60 hover:bg-teal-500/10 text-slate-300 hover:text-teal-300 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${currentAudioUrl ? 'col-span-2' : ''}`}>
+            <label
+              className={`p-2.5 rounded-2xl bg-slate-950 border border-slate-800 hover:border-teal-500/60 hover:bg-teal-500/10 text-slate-300 hover:text-teal-300 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${currentAudioUrl ? "col-span-2" : ""}`}
+            >
               <div className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0">
                 <Icon icon="ph:camera-bold" className="w-3.5 h-3.5" />
               </div>
@@ -541,7 +631,7 @@ export const Step05FeedbackInterview: React.FC = () => {
         <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
           <span className="flex items-center gap-1.5 text-amber-400">
             <Icon icon="ph:list-checks-bold" className="w-4 h-4" />
-            {t.stepIndicator || 'Step'} {currentQuestionIndex + 1}
+            {t.stepIndicator || "Step"} {currentQuestionIndex + 1}
           </span>
           <span className="text-slate-400 font-medium">
             {currentQuestionIndex + 1} / {totalQuestions}
@@ -552,7 +642,9 @@ export const Step05FeedbackInterview: React.FC = () => {
         <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800 p-0.5">
           <div
             className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-teal-400 transition-all duration-300 rounded-full"
-            style={{ width: `${((currentQuestionIndex + 1) / totalQuestions) * 100}%` }}
+            style={{
+              width: `${((currentQuestionIndex + 1) / totalQuestions) * 100}%`,
+            }}
           />
         </div>
 
@@ -567,8 +659,11 @@ export const Step05FeedbackInterview: React.FC = () => {
 
           <div className="relative z-10 w-full">
             <div className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-widest text-amber-400 uppercase mb-1">
-              <Icon icon={getCategoryIcon(currentQuestionIndex)} className="w-3.5 h-3.5" />
-              <span>{currentQ?.category || 'HOSPITAL CLEANLINESS'}</span>
+              <Icon
+                icon={getCategoryIcon(currentQuestionIndex)}
+                className="w-3.5 h-3.5"
+              />
+              <span>{currentQ?.category || "HOSPITAL CLEANLINESS"}</span>
             </div>
             <h2 className="text-base sm:text-lg font-extrabold text-white leading-snug">
               {currentQ?.title}
@@ -582,7 +677,7 @@ export const Step05FeedbackInterview: React.FC = () => {
         </div>
 
         {/* RENDER QUESTION CHOICE OPTIONS (Index 0) */}
-        {currentQ?.type === 'choice' && currentQ?.options && (
+        {currentQ?.type === "choice" && currentQ?.options && (
           <div className="space-y-2.5 my-3">
             {currentQ.options.map((option, idx) => {
               const isSelected = feedbackResponses.userRole === option;
@@ -590,19 +685,21 @@ export const Step05FeedbackInterview: React.FC = () => {
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => dispatch(updateFeedbackResponses({ userRole: option }))}
+                  onClick={() =>
+                    dispatch(updateFeedbackResponses({ userRole: option }))
+                  }
                   className={`w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-bold flex items-center justify-between transition-all duration-200 ${
                     isSelected
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-400 shadow-md shadow-amber-500/10 scale-[1.01]'
-                      : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                      ? "bg-amber-500/20 text-amber-300 border-amber-400 shadow-md shadow-amber-500/10 scale-[1.01]"
+                      : "bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
                         isSelected
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-slate-900 text-slate-400 border border-slate-800'
+                          ? "bg-amber-500 text-slate-950"
+                          : "bg-slate-900 text-slate-400 border border-slate-800"
                       }`}
                     >
                       {String.fromCharCode(65 + idx)}
@@ -610,7 +707,10 @@ export const Step05FeedbackInterview: React.FC = () => {
                     <span>{option}</span>
                   </div>
                   {isSelected ? (
-                    <Icon icon="ph:check-circle-fill" className="w-5 h-5 text-amber-400" />
+                    <Icon
+                      icon="ph:check-circle-fill"
+                      className="w-5 h-5 text-amber-400"
+                    />
                   ) : (
                     <div className="w-4 h-4 rounded-full border border-slate-700" />
                   )}
@@ -621,27 +721,32 @@ export const Step05FeedbackInterview: React.FC = () => {
         )}
 
         {/* RENDER RATING QUESTIONS (Q5 - Q9) */}
-        {currentQ?.type === 'rating' && (
+        {currentQ?.type === "rating" && (
           <div className="space-y-2.5 my-3">
             {/* Could Be Better Card */}
             <div>
               <button
                 type="button"
-                onClick={() => handleRatingSelect('Could Be Better')}
+                onClick={() => handleRatingSelect("Could Be Better")}
                 className={`w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-extrabold flex items-center justify-between transition-all duration-200 ${
-                  currentRatingVal === 'Could Be Better'
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-400 shadow-md shadow-amber-500/10'
-                    : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                  currentRatingVal === "Could Be Better"
+                    ? "bg-amber-500/20 text-amber-300 border-amber-400 shadow-md shadow-amber-500/10"
+                    : "bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
                     <Icon icon="ph:warning-bold" className="w-4 h-4" />
                   </div>
-                  <span>{t.ratingLabels?.couldBeBetter || 'Could Be Better'}</span>
+                  <span>
+                    {t.ratingLabels?.couldBeBetter || "Could Be Better"}
+                  </span>
                 </div>
-                {currentRatingVal === 'Could Be Better' && (
-                  <Icon icon="ph:check-circle-fill" className="w-5 h-5 text-amber-400" />
+                {currentRatingVal === "Could Be Better" && (
+                  <Icon
+                    icon="ph:check-circle-fill"
+                    className="w-5 h-5 text-amber-400"
+                  />
                 )}
               </button>
             </div>
@@ -649,49 +754,55 @@ export const Step05FeedbackInterview: React.FC = () => {
             {/* Acceptable Card */}
             <button
               type="button"
-              onClick={() => handleRatingSelect('Acceptable')}
+              onClick={() => handleRatingSelect("Acceptable")}
               className={`w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-extrabold flex items-center justify-between transition-all duration-200 ${
-                currentRatingVal === 'Acceptable'
-                  ? 'bg-teal-500/20 text-teal-300 border-teal-400 shadow-md shadow-teal-500/10'
-                  : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                currentRatingVal === "Acceptable"
+                  ? "bg-teal-500/20 text-teal-300 border-teal-400 shadow-md shadow-teal-500/10"
+                  : "bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900"
               }`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/30">
                   <Icon icon="ph:thumbs-up-bold" className="w-4 h-4" />
                 </div>
-                <span>{t.ratingLabels?.acceptable || 'Acceptable'}</span>
+                <span>{t.ratingLabels?.acceptable || "Acceptable"}</span>
               </div>
-              {currentRatingVal === 'Acceptable' && (
-                <Icon icon="ph:check-circle-fill" className="w-5 h-5 text-teal-400" />
+              {currentRatingVal === "Acceptable" && (
+                <Icon
+                  icon="ph:check-circle-fill"
+                  className="w-5 h-5 text-teal-400"
+                />
               )}
             </button>
 
             {/* Excellent Card */}
             <button
               type="button"
-              onClick={() => handleRatingSelect('Excellent')}
+              onClick={() => handleRatingSelect("Excellent")}
               className={`w-full p-3.5 rounded-2xl border text-xs sm:text-sm font-extrabold flex items-center justify-between transition-all duration-200 ${
-                currentRatingVal === 'Excellent'
-                  ? 'bg-yellow-500/20 text-yellow-300 border-yellow-400 shadow-md shadow-yellow-500/10'
-                  : 'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                currentRatingVal === "Excellent"
+                  ? "bg-yellow-500/20 text-yellow-300 border-yellow-400 shadow-md shadow-yellow-500/10"
+                  : "bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-900"
               }`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-yellow-500/20 text-yellow-400 flex items-center justify-center shrink-0 border border-yellow-500/30">
                   <Icon icon="ph:star-fill" className="w-4 h-4" />
                 </div>
-                <span>{t.ratingLabels?.excellent || 'Excellent'}</span>
+                <span>{t.ratingLabels?.excellent || "Excellent"}</span>
               </div>
-              {currentRatingVal === 'Excellent' && (
-                <Icon icon="ph:check-circle-fill" className="w-5 h-5 text-yellow-400" />
+              {currentRatingVal === "Excellent" && (
+                <Icon
+                  icon="ph:check-circle-fill"
+                  className="w-5 h-5 text-yellow-400"
+                />
               )}
             </button>
           </div>
         )}
 
         {/* RENDER TEXT INPUT QUESTIONS (FEEDBACK & GRIEVANCE) */}
-        {currentQ?.type === 'text' && textInfo && (
+        {currentQ?.type === "text" && textInfo && (
           <div className="my-3 space-y-3 text-left">
             <div className="relative">
               <textarea
@@ -717,7 +828,7 @@ export const Step05FeedbackInterview: React.FC = () => {
             className="flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
           >
             <Icon icon="ph:arrow-left-bold" className="w-3.5 h-3.5" />
-            <span>{t.commonButtons?.previous || 'Previous'}</span>
+            <span>{t.commonButtons?.previous || "Previous"}</span>
           </button>
 
           {/* Skip Button (hidden on final question) */}
@@ -727,7 +838,7 @@ export const Step05FeedbackInterview: React.FC = () => {
               onClick={handleNext}
               className="flex-1 sm:flex-initial px-3 sm:px-4 py-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 border border-slate-800/80 text-slate-400 hover:text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
             >
-              <span>{t.commonButtons?.skip || 'Skip Question'}</span>
+              <span>{t.commonButtons?.skip || "Skip Question"}</span>
               <Icon icon="ph:fast-forward-bold" className="w-3.5 h-3.5" />
             </button>
           )}
@@ -739,16 +850,25 @@ export const Step05FeedbackInterview: React.FC = () => {
             onClick={handleNext}
             className={`flex-1 sm:flex-initial px-3.5 sm:px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all duration-200 ${
               isSaveDisabled
-                ? 'bg-slate-800/80 text-slate-500 border border-slate-700/50 cursor-not-allowed opacity-60 shadow-none'
-                : 'bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-lg shadow-amber-500/20 active:scale-[0.98]'
+                ? "bg-slate-800/80 text-slate-500 border border-slate-700/50 cursor-not-allowed opacity-60 shadow-none"
+                : "bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-lg shadow-amber-500/20 active:scale-[0.98]"
             }`}
           >
             <span>
               {isLastQuestion
-                ? (t.commonButtons?.submit || t.bottomSheet?.submitBtn || 'Submit')
-                : (t.commonButtons?.next || 'Save & Continue')}
+                ? t.commonButtons?.submit ||
+                  t.bottomSheet?.submitBtn ||
+                  "Submit"
+                : t.commonButtons?.next || "Save & Continue"}
             </span>
-            <Icon icon={isLastQuestion ? "ph:paper-plane-tilt-bold" : "ph:arrow-right-bold"} className="w-3.5 h-3.5" />
+            <Icon
+              icon={
+                isLastQuestion
+                  ? "ph:paper-plane-tilt-bold"
+                  : "ph:arrow-right-bold"
+              }
+              className="w-3.5 h-3.5"
+            />
           </button>
         </div>
       </div>
@@ -762,14 +882,12 @@ export const Step05FeedbackInterview: React.FC = () => {
             setIsBottomSheetOpen(false);
             handleNext();
           }}
-          categoryName={currentQ?.category || 'FEEDBACK'}
+          categoryName={currentQ?.category || "FEEDBACK"}
           commentsKey={currentRatingInfo.commentsKey}
-          audioKey={currentMediaKeys?.audioKey || 'registrationAudioUrl'}
-          imageKey={currentMediaKeys?.imageKey || 'registrationImageUrl'}
+          audioKey={currentMediaKeys?.audioKey || "registrationAudioUrl"}
+          imageKey={currentMediaKeys?.imageKey || "registrationImageUrl"}
         />
       )}
     </motion.div>
   );
 };
-
-

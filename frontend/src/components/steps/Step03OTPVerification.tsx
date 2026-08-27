@@ -89,7 +89,7 @@ export const Step03OTPVerification: React.FC = () => {
           <h3 className="text-2xl font-black text-white">Verify Your Mobile</h3>
           <p className="text-xs text-slate-300 mt-1">
             Enter the 6-digit OTP sent to{" "}
-            <strong className="text-white font-mono">{maskedMobile}</strong>
+            <strong className="text-white font-sans">{maskedMobile}</strong>
           </p>
         </div>
 
@@ -116,7 +116,7 @@ export const Step03OTPVerification: React.FC = () => {
         <div className="space-y-1 text-xs text-slate-400">
           <div>
             Resend OTP in{" "}
-            <strong className="text-amber-400 font-mono">
+            <strong className="text-amber-400 font-sans">
               00:
               {otpTimerSeconds < 10 ? `0${otpTimerSeconds}` : otpTimerSeconds}
             </strong>

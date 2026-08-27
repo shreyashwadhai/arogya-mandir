@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import type { RootState } from '../../redux/store';
-import { resetForm } from '../../redux/features/journeySlice';
-import { motion } from 'framer-motion';
-import { Icon } from '@iconify/react';
+import React, { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../../redux/store";
+import { resetForm } from "../../redux/features/journeySlice";
+import { motion } from "framer-motion";
+import { Icon } from "@iconify/react";
 
 export const Step06Confirmation: React.FC = () => {
   const dispatch = useDispatch();
-  const { trackingId, aadhaarData } = useSelector((state: RootState) => state.journey);
+  const { trackingId, aadhaarData } = useSelector(
+    (state: RootState) => state.journey,
+  );
   const [copied, setCopied] = useState(false);
 
-  const displayTrackingId = trackingId || 'AGM-2024-08547';
+  const displayTrackingId = trackingId || "AGM-2024-08547";
 
   const copyTrackingId = () => {
     navigator.clipboard.writeText(displayTrackingId);
@@ -47,7 +49,9 @@ export const Step06Confirmation: React.FC = () => {
         {/* WHITE TICKET CARD SHEET matching Screen 6 in Reference Image! */}
         <div className="bg-white text-slate-900 rounded-[28px] p-5 shadow-2xl text-left space-y-3.5">
           <div className="border-b border-slate-200 pb-3">
-            <div className="text-[10px] font-extrabold uppercase text-slate-500">Feedback Status</div>
+            <div className="text-[10px] font-extrabold uppercase text-slate-500">
+              Feedback Status
+            </div>
             <div className="text-xs font-black text-teal-700 flex items-center gap-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
               Logged & Verified
@@ -55,22 +59,36 @@ export const Step06Confirmation: React.FC = () => {
           </div>
 
           <div>
-            <div className="text-[10px] font-extrabold uppercase text-slate-500">Tracking ID</div>
-            <div className="text-base font-black text-slate-900 font-mono flex items-center justify-between mt-0.5">
+            <div className="text-[10px] font-extrabold uppercase text-slate-500">
+              Tracking ID
+            </div>
+            <div className="text-base font-black text-slate-900 font-sans flex items-center justify-between mt-0.5">
               <span>{displayTrackingId}</span>
               <button
                 onClick={copyTrackingId}
                 className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition"
               >
-                <Icon icon={copied ? "ph:check-bold" : "ph:copy-bold"} className="w-4 h-4" />
+                <Icon
+                  icon={copied ? "ph:check-bold" : "ph:copy-bold"}
+                  className="w-4 h-4"
+                />
               </button>
             </div>
-            {copied && <span className="text-[10px] text-teal-600 font-bold">Copied to Clipboard!</span>}
+            {copied && (
+              <span className="text-[10px] text-teal-600 font-bold">
+                Copied to Clipboard!
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 pt-2 border-t border-slate-200 text-xs text-slate-700">
-            <Icon icon="ph:envelope-simple-bold" className="w-4 h-4 text-teal-600 shrink-0" />
-            <span>SMS confirmation sent to <strong>{maskedMobile}</strong></span>
+            <Icon
+              icon="ph:envelope-simple-bold"
+              className="w-4 h-4 text-teal-600 shrink-0"
+            />
+            <span>
+              SMS confirmation sent to <strong>{maskedMobile}</strong>
+            </span>
           </div>
         </div>
 
@@ -97,7 +115,8 @@ export const Step06Confirmation: React.FC = () => {
 
         {/* Subtext Branding Footer */}
         <div className="text-[10px] text-slate-500 font-medium pt-3 border-t border-slate-800/80">
-          Powered by Arogya Mandir Digital Health Initiative • MINISTRY OF HEALTH AND FAMILY WELFARE
+          Powered by Arogya Mandir Digital Health Initiative • MINISTRY OF
+          HEALTH AND FAMILY WELFARE
         </div>
       </div>
     </motion.div>
