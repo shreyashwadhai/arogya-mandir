@@ -1,4 +1,4 @@
-import type { FeedbackRecord } from './dummyData';
+import type { FeedbackRecord } from '../../types/cmoTypes';
 
 /**
  * Download currently filtered feedback records as a CSV file
@@ -42,7 +42,7 @@ export const exportToCSV = (records: FeedbackRecord[], filename = 'Arogya_Mandir
     `"${r.clinicCode || ''}"`,
     `"${r.clinicName || r.facilityName || ''}"`,
     `"${r.stationHq || 'Station HQ'}"`,
-    `"${r.visitorType || 'ESM/Spouse'}"`,
+    `"${r.visitorType}"`,
     `"${r.responseType || r.overallRating || ''}"`,
     `"${r.status || ''}"`,
     r.isGrievance ? 'YES' : 'NO',
@@ -147,7 +147,7 @@ export const exportToPDF = (records: FeedbackRecord[], title = 'Arogya Mandir Fe
 
         <div class="summary-grid">
           <div class="stat-card">
-            <div class="stat-title">Total Submissions</div>
+            <div class="stat-title">Total Feedbacks</div>
             <div class="stat-val">${totalCount}</div>
           </div>
           <div class="stat-card">
@@ -190,7 +190,7 @@ export const exportToPDF = (records: FeedbackRecord[], title = 'Arogya Mandir Fe
                   <td>${r.timestamp || r.date || ''}</td>
                   <td><strong>${r.clinicName || r.facilityName || ''}</strong></td>
                   <td>${r.stationHq || 'Jamnagar HQ'}</td>
-                  <td>${r.visitorType || 'ESM/Spouse'}</td>
+                  <td>${r.visitorType || 'Dependant'}</td>
                   <td class="${ratingClass}">${rating}</td>
                   <td>${r.status}</td>
                 </tr>
@@ -256,7 +256,7 @@ export const exportSingleRecordPDF = (record: FeedbackRecord) => {
             <div><strong>Clinic Code:</strong> ${record.clinicCode || 'JAM/PC/RAJ'}</div>
             <div><strong>Overall Rating:</strong> <span class="tag">${record.responseType || record.overallRating}</span></div>
             <div><strong>Status:</strong> ${record.status}</div>
-            <div><strong>Visitor Category:</strong> ${record.visitorType || 'ESM/Spouse'}</div>
+            <div><strong>Visitor Category:</strong> ${record.visitorType || 'Dependant'}</div>
           </div>
         </div>
 

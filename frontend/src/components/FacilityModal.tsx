@@ -1,15 +1,17 @@
-import React from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import type { RootState } from '../redux/store';
-import { selectFacility, setFacilityModalOpen } from '../redux/features/facilitySlice';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Icon } from '@iconify/react';
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../redux/store";
+import {
+  selectFacility,
+  setFacilityModalOpen,
+} from "../redux/features/facilitySlice";
+import { motion, AnimatePresence } from "framer-motion";
+import { Icon } from "@iconify/react";
 
 export const FacilityModal: React.FC = () => {
   const dispatch = useDispatch();
-  const { isFacilityModalOpen, availableFacilities, selectedFacility } = useSelector(
-    (state: RootState) => state.facility
-  );
+  const { isFacilityModalOpen, availableFacilities, selectedFacility } =
+    useSelector((state: RootState) => state.facility);
 
   if (!isFacilityModalOpen) return null;
 
@@ -36,8 +38,12 @@ export const FacilityModal: React.FC = () => {
               <Icon icon="ph:map-pin-bold" className="w-5 h-5 text-amber-400" />
             </div>
             <div>
-              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">HOSPITAL LOCATION</span>
-              <h2 className="text-xl font-extrabold text-white">Select Healthcare Centre</h2>
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                HOSPITAL LOCATION
+              </span>
+              <h2 className="text-xl font-extrabold text-white">
+                Select Healthcare Centre
+              </h2>
             </div>
           </div>
 
@@ -53,16 +59,23 @@ export const FacilityModal: React.FC = () => {
                   }}
                   className={`p-4 rounded-2xl border-2 cursor-pointer transition flex items-center justify-between ${
                     isSelected
-                      ? 'bg-amber-500/15 border-amber-400 text-white shadow-lg shadow-amber-500/10'
-                      : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-300'
+                      ? "bg-amber-500/15 border-amber-400 text-white shadow-lg shadow-amber-500/10"
+                      : "bg-slate-900/90 border-slate-800 hover:border-slate-700 text-slate-300"
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <Icon icon="ph:buildings-bold" className={`w-5 h-5 mt-0.5 ${isSelected ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <Icon
+                      icon="ph:buildings-bold"
+                      className={`w-5 h-5 mt-0.5 ${isSelected ? "text-amber-400" : "text-slate-500"}`}
+                    />
                     <div>
-                      <div className="text-sm font-extrabold text-white">{fac.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">{fac.location}</div>
-                      <div className="text-[10px] text-teal-400 font-mono mt-1">
+                      <div className="text-sm font-extrabold text-white">
+                        {fac.name}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-0.5">
+                        {fac.location}
+                      </div>
+                      <div className="text-[10px] text-teal-400 font-sans mt-1">
                         Code: {fac.code} • District: {fac.district}
                       </div>
                     </div>

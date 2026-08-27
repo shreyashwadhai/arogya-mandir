@@ -12,7 +12,7 @@ import { Icon } from "@iconify/react";
 export const Step01_5MobileCheck: React.FC = () => {
   const dispatch = useDispatch();
   const selectedLanguage = useSelector(
-    (state: RootState) => state.journey.selectedLanguage
+    (state: RootState) => state.journey.selectedLanguage,
   );
   const t = translations[selectedLanguage] || translations.en;
   const v = t.verifyIdentity || translations.en.verifyIdentity;
@@ -48,8 +48,10 @@ export const Step01_5MobileCheck: React.FC = () => {
     dispatch(
       updateAadhaarData({
         mobileNumber: mobileNumber,
-        aadhaarNumber: aadhaarLast4 ? `XXXX-XXXX-${aadhaarLast4}` : "XXXX-XXXX-1234",
-      })
+        aadhaarNumber: aadhaarLast4
+          ? `XXXX-XXXX-${aadhaarLast4}`
+          : "XXXX-XXXX-1234",
+      }),
     );
 
     // Directly proceed to OTP Verification (Step 3)
@@ -141,7 +143,9 @@ export const Step01_5MobileCheck: React.FC = () => {
                   maxLength={10}
                   value={mobileNumber}
                   onChange={(e) => handleMobileChange(e.target.value)}
-                  placeholder={v.mobilePlaceholder || "10-अंकों का मोबाइल नंबर दर्ज करें"}
+                  placeholder={
+                    v.mobilePlaceholder || "10-अंकों का मोबाइल नंबर दर्ज करें"
+                  }
                   className="w-full py-3.5 px-3 text-slate-900 text-sm font-bold focus:outline-none placeholder:text-slate-400"
                 />
               </div>
@@ -149,7 +153,7 @@ export const Step01_5MobileCheck: React.FC = () => {
           ) : (
             <div>
               <div className="w-full relative flex items-center bg-white border border-slate-300 rounded-2xl py-3.5 px-4 focus-within:ring-2 focus-within:ring-amber-500/40">
-                <span className="w-full text-slate-400 font-extrabold font-mono tracking-wider text-sm sm:text-base select-none">
+                <span className="w-full text-slate-400 font-extrabold font-sans tracking-wider text-sm sm:text-base select-none">
                   XXXX-XXXX-
                 </span>
                 <span className="mx-2 text-slate-300">|</span>

@@ -235,7 +235,8 @@ export const CouldBeBetterBottomSheet: React.FC<
       // Dispatch sample audio URL for simulated recording playback immediately
       dispatch(
         updateFeedbackResponses({
-          [audioKey]: "https://actions.google.com/sounds/v1/speech/human_voice_sample.ogg",
+          [audioKey]:
+            "https://actions.google.com/sounds/v1/speech/human_voice_sample.ogg",
         }),
       );
       isSimulatedRef.current = false;
@@ -408,7 +409,9 @@ export const CouldBeBetterBottomSheet: React.FC<
 
             {/* OPTION 2: SPEAK / RECORD VOICE */}
             <div
-              onClick={() => setActiveTab(activeTab === "speak" ? null : "speak")}
+              onClick={() =>
+                setActiveTab(activeTab === "speak" ? null : "speak")
+              }
               className={`p-3.5 sm:p-4 rounded-2xl border-2 transition-all cursor-pointer ${
                 activeTab === "speak"
                   ? "border-slate-700 bg-slate-50/40 shadow-sm"
@@ -454,7 +457,9 @@ export const CouldBeBetterBottomSheet: React.FC<
                       className="w-full py-3.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-black rounded-xl flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
                     >
                       <Icon icon="ph:microphone-bold" className="w-4 h-4" />
-                      <span>{b.speakOption || "बोलकर बताएँ (Start Recording)"}</span>
+                      <span>
+                        {b.speakOption || "बोलकर बताएँ (Start Recording)"}
+                      </span>
                     </button>
                   )}
 
@@ -471,7 +476,7 @@ export const CouldBeBetterBottomSheet: React.FC<
                         ))}
                       </div>
 
-                      <div className="text-2xl font-black font-mono text-slate-900">
+                      <div className="text-2xl font-black font-sans text-slate-900">
                         0:{recordingTimer.toString().padStart(2, "0")}
                       </div>
                       <p className="text-xs font-bold text-red-600 animate-pulse flex items-center justify-center gap-1">
@@ -588,7 +593,9 @@ export const CouldBeBetterBottomSheet: React.FC<
 
             {/* OPTION 3: ATTACH PHOTO */}
             <div
-              onClick={() => setActiveTab(activeTab === "photo" ? null : "photo")}
+              onClick={() =>
+                setActiveTab(activeTab === "photo" ? null : "photo")
+              }
               className={`p-3.5 sm:p-4 rounded-2xl border-2 transition-all cursor-pointer ${
                 activeTab === "photo"
                   ? "border-slate-700 bg-slate-50/40 shadow-sm"
@@ -649,7 +656,10 @@ export const CouldBeBetterBottomSheet: React.FC<
                       {/* Re-upload / Change Photo Action Bar */}
                       <div className="flex items-center justify-between gap-2 pt-1">
                         <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                          <Icon icon="ph:check-circle-fill" className="w-4 h-4" />
+                          <Icon
+                            icon="ph:check-circle-fill"
+                            className="w-4 h-4"
+                          />
                           <span>Preview attached photo</span>
                         </span>
 
@@ -657,7 +667,10 @@ export const CouldBeBetterBottomSheet: React.FC<
                           onClick={(e) => e.stopPropagation()}
                           className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition shadow-sm"
                         >
-                          <Icon icon="ph:arrows-clockwise-bold" className="w-3.5 h-3.5" />
+                          <Icon
+                            icon="ph:arrows-clockwise-bold"
+                            className="w-3.5 h-3.5"
+                          />
                           <span>Change Photo</span>
                           <input
                             type="file"
