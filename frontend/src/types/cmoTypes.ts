@@ -100,6 +100,7 @@ export interface FeedbackRecord {
   visitorType: 'Dependant';
   responseType: 'Excellent Service' | 'Acceptable standard' | 'Could Be Better';
   overallRating: 'Could Be Better' | 'Acceptable' | 'Excellent';
+  overallStarRating?: number; // 1 to 5 stars
   status: 'Assigned to CMO' | 'Action In Progress' | 'Escalated' | 'Resolved' | 'Closed' | 'Reverted';
   assignedCmoId: string; // ID of CMO currently handling this
   previousCmoId?: string | null;

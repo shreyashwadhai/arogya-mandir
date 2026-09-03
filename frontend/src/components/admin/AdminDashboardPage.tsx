@@ -199,6 +199,61 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
   const unreadNotifCount = notifications.filter((n) => !n.isRead).length;
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  const cmo1MandirRatingSummary = useMemo(() => {
+    if (activeUser?.role !== "CMO_1") return null;
+
+    const assignedCentreIds = activeUser.assignedCentreIds ?? [];
+    const relevantRecords =
+      assignedCentreIds.length > 0
+        ? scopedRecords.filter((record) =>
+            assignedCentreIds.includes(record.centreId),
+          )
+        : scopedRecords.filter(
+            (record) => record.assignedCmoId === activeUser.id,
+          );
+
+    if (relevantRecords.length === 0) {
+      return {
+        average: 0,
+        stars: 0,
+        label: "No ratings yet",
+        totalFeedbacks: 0,
+      };
+    }
+
+    const totalStarScore = relevantRecords.reduce((sum, record) => {
+      const starRating =
+        typeof record.overallStarRating === "number"
+          ? record.overallStarRating
+          : record.overallRating === "Excellent"
+            ? 5
+            : record.overallRating === "Acceptable"
+              ? 4
+              : 2;
+      return sum + starRating;
+    }, 0);
+
+    const average = Number(
+      (totalStarScore / relevantRecords.length).toFixed(1),
+    );
+    const stars = Math.round(average);
+
+    return {
+      average,
+      stars: Math.min(5, Math.max(0, stars)),
+      label:
+        average >= 4
+          ? "Excellent"
+          : average >= 3
+            ? "Very Good"
+            : average >= 2
+            
+              ? "Good"
+              : "Needs Improvement",
+      totalFeedbacks: relevantRecords.length,
+    };
+  }, [activeUser, scopedRecords]);
+
   return (
     <div className="min-h-screen bg-[#0F1115] text-[#F5F6FA] flex flex-col font-sans selection:bg-[#5B8DEF] selection:text-white">
       {/* User Detail Modal */}
@@ -454,8 +509,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         </header>
 
         {/* NAVIGATION TAB BAR (§1, §8.2) */}
-        <div className="bg-[#1A1D24]/72 backdrop-blur-md shadow-lg shadow-black/20 border-b border-[#2A2E38] px-4 sm:px-8 py-2.5 flex items-center justify-between overflow-x-auto ">
-          <div className="flex items-center gap-2 w-full px-72 ">
+        <div className="bg-[#1A1D24]/72 backdrop-blur-md shadow-lg shadow-black/20 border-b border-[#2A2E38] px-4 sm:px-8 py-2.5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 w-full max-w-7xl mx-auto min-w-max">
             {/* Executive Overview */}
             <button
               type="button"
@@ -463,7 +518,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 setActiveTab("overview");
                 setSelectedPerformanceCentre(null);
               }}
-              className={`w-1/3 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+              className={`w-1/3 flex-1 sm:flex-initial whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === "overview" && !selectedPerformanceCentre
                   ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20"
                   : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
@@ -482,7 +537,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   setActiveTab("insights");
                   setSelectedPerformanceCentre(null);
                 }}
-                className={`w-1/3 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                className={`w-1/3 flex-1 sm:flex-initial whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === "insights"
                     ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20"
                     : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
@@ -503,7 +558,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 setActiveTab("analysis");
                 setSelectedPerformanceCentre(null);
               }}
-              className={`w-1/3 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+              className={`w-1/3 flex-1 sm:flex-initial whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === "analysis" || selectedPerformanceCentre
                   ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20"
                   : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
@@ -520,7 +575,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                 setActiveTab("feedbacks");
                 setSelectedPerformanceCentre(null);
               }}
-              className={`w-1/3 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+              className={`w-1/3 flex-1 sm:flex-initial whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === "feedbacks"
                   ? "bg-[#5B8DEF] text-white shadow-lg shadow-[#5B8DEF]/20"
                   : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
@@ -538,7 +593,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
                   setActiveTab("admin_panel");
                   setSelectedPerformanceCentre(null);
                 }}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                className={`flex-1 sm:flex-initial whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
                   activeTab === "admin_panel"
                     ? "bg-[#7C5CFC] text-white shadow-lg shadow-[#7C5CFC]/20"
                     : "text-[#9AA0AC] hover:text-[#F5F6FA] hover:bg-[#20232B]"
@@ -570,9 +625,72 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
         {/* 1. EXECUTIVE OVERVIEW TAB (§6.1, §8.1) */}
         {activeTab === "overview" && !selectedPerformanceCentre && (
           <div className="space-y-6">
-            {/* Stat Summary & ChartJS Visualization Block for CMO_1 */}
-            {activeUser?.role === "CMO_1" && (
-              <Cmo1ResponseChart scopedRecords={scopedRecords} />
+            {activeUser?.role === "CMO_1" && cmo1MandirRatingSummary && (
+              <div className="bg-[#1A1D24] border border-[#2A2E38] rounded-2xl p-5 shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#5B8DEF] flex items-center gap-2">
+                      <Icon icon="ph:star-fill" className="w-3.5 h-3.5" />
+                      Overall Mandir Rating
+                    </div>
+                    <div className="mt-2 text-xl font-black text-[#F5F6FA] font-sans">
+                      {cmo1MandirRatingSummary.average.toFixed(1)} / 5.0
+                    </div>
+                    <div className="mt-1 text-[11px] text-[#9AA0AC]">
+                      {cmo1MandirRatingSummary.totalFeedbacks > 0
+                        ? `${cmo1MandirRatingSummary.totalFeedbacks} feedback entries reviewed`
+                        : "No feedback entries yet"}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: 5 }, (_, index) => {
+                        const val = cmo1MandirRatingSummary.average - index;
+                        let starType = "empty";
+                        if (val >= 0.75) starType = "full";
+                        else if (val >= 0.25) starType = "half";
+
+                        const emptyPath = "M10.275 22.2375L15 19.3875L19.725 22.275L18.4875 16.875L22.65 13.275L17.175 12.7875L15 7.6875L12.825 12.75L7.35 13.2375L11.5125 16.875L10.275 22.2375ZM5.7375 28.5L8.175 17.9625L0 10.875L10.8 9.9375L15 0L19.2 9.9375L30 10.875L21.825 17.9625L24.2625 28.5L15 22.9125L5.7375 28.5Z";
+                        const fullPath = "M5.7375 28.5L8.175 17.9625L0 10.875L10.8 9.9375L15 0L19.2 9.9375L30 10.875L21.825 17.9625L24.2625 28.5L15 22.9125L5.7375 28.5Z";
+
+                        return (
+                          <svg
+                            key={index}
+                            width="30"
+                            height="29"
+                            viewBox="0 0 30 29"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-6 h-6 drop-shadow-[0_0_10px_rgba(245,183,0,0.6)]"
+                          >
+                            {starType === "half" && (
+                              <defs>
+                                <clipPath id={`half-clip-${index}`}>
+                                  <rect x="0" y="0" width="15" height="29" />
+                                </clipPath>
+                              </defs>
+                            )}
+                            {starType === "empty" && <path fill="#D1D5DB" d={emptyPath} />}
+                            {starType === "full" && <path fill="#F0C902" d={fullPath} />}
+                            {starType === "half" && (
+                              <>
+                                <path fill="#D1D5DB" d={emptyPath} />
+                                <path fill="#F0C902" clipPath={`url(#half-clip-${index})`} d={fullPath} />
+                              </>
+                            )}
+                          </svg>
+                        );
+                      })}
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#5B8DEF]">
+                        {cmo1MandirRatingSummary.label}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Standard Dashboard Charts */}
@@ -769,7 +887,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({
             <div className="space-y-6">
               {/* For CMO_1 & CMO_2: Render CmoAnalysisView with values, percentages, escalation/revert metrics & analysis box */}
               {activeUser?.role === "CMO_1" || activeUser?.role === "CMO_2" ? (
-                <CmoAnalysisView records={scopedRecords} role={activeUser?.role} />
+                <CmoAnalysisView
+                  records={scopedRecords}
+                  role={activeUser?.role}
+                />
               ) : (
                 /* For CMO_3 & SuperAdmin: Render standard trend & resolution charts */
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

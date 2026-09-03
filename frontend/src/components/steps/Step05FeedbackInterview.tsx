@@ -23,6 +23,7 @@ export const Step05FeedbackInterview: React.FC = () => {
   const totalQuestions = t.questions.length;
 
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const [hoveredStar, setHoveredStar] = useState<number | null>(null);
 
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -816,6 +817,53 @@ export const Step05FeedbackInterview: React.FC = () => {
 
             {/* SPECIAL FEATURES: VOICE MIC & IMAGE UPLOAD */}
             {renderMediaWidget()}
+
+            {/* 5 STAR RATING SYSTEM (STEP 5) - BELOW TEXTAREA & ABOVE BUTTONS */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-amber-500/30 text-center space-y-2 shadow-inner">
+              <div className="text-xs font-semibold text-amber-400 tracking-wider flex items-center justify-center gap-1.5">
+                <Icon icon="ph:star-fill" className="w-3 h-3 text-amber-400" />
+                <span>Rate Overall Hospital Experience</span>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 py-1">
+                {[1, 2, 3, 4, 5].map((starVal) => {
+                  const currentRating = feedbackResponses.overallStarRating ?? 0;
+                  const activeStarVal = hoveredStar !== null ? hoveredStar : currentRating;
+                  const isFilled = starVal <= activeStarVal;
+                  return (
+                    <button
+                      key={starVal}
+                      type="button"
+                      onMouseEnter={() => setHoveredStar(starVal)}
+                      onMouseLeave={() => setHoveredStar(null)}
+                      onClick={() =>
+                        dispatch(updateFeedbackResponses({ overallStarRating: starVal }))
+                      }
+                      className="p-1 rounded-xl transition-all duration-200 transform hover:scale-125 focus:outline-none cursor-pointer active:scale-95"
+                      title={`Rate ${starVal} Star${starVal > 1 ? "s" : ""}`}
+                    >
+                      <Icon
+                        icon="ph:star-fill"
+                        className={`w-7 h-7 transition-colors duration-200 ${
+                          isFilled
+                            ? "text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]"
+                            : "text-slate-700 hover:text-amber-300/50"
+                        }`}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="text-[11px] font-semibold text-slate-300 font-sans min-h-[16px]">
+                {(hoveredStar !== null ? hoveredStar : (feedbackResponses.overallStarRating ?? 0)) === 5 && "5 / 5 Stars - Excellent Experience ⭐⭐⭐⭐⭐"}
+                {(hoveredStar !== null ? hoveredStar : (feedbackResponses.overallStarRating ?? 0)) === 4 && "4 / 5 Stars - Very Good Experience ⭐⭐⭐⭐"}
+                {(hoveredStar !== null ? hoveredStar : (feedbackResponses.overallStarRating ?? 0)) === 3 && "3 / 5 Stars - Good / Average Experience ⭐⭐⭐"}
+                {(hoveredStar !== null ? hoveredStar : (feedbackResponses.overallStarRating ?? 0)) === 2 && "2 / 5 Stars - Needs Improvement ⭐⭐"}
+                {(hoveredStar !== null ? hoveredStar : (feedbackResponses.overallStarRating ?? 0)) === 1 && "1 / 5 Star - Poor Experience ⭐"}
+                {(hoveredStar === null && !feedbackResponses.overallStarRating) && "Tap a star to rate your experience"}
+              </div>
+            </div>
           </div>
         )}
 

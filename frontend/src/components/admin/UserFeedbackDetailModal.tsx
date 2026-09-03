@@ -231,7 +231,25 @@ export const UserFeedbackDetailModal: React.FC = () => {
     return (
       <div className="space-y-2 relative">
         {/* Rating Badge */}
-        {ratingVal ? (
+        {qKey === "suggestions" ? (
+          <div className="flex items-center gap-1 text-amber-400 font-bold text-xs bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg w-fit">
+            <span className="text-[10px] text-amber-300 uppercase font-semibold mr-1">5 Star Rating:</span>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Icon
+                key={star}
+                icon="ph:star-fill"
+                className={`w-3.5 h-3.5 ${
+                  star <= (record.overallStarRating || (record.overallRating === "Excellent" ? 5 : record.overallRating === "Acceptable" ? 4 : 2))
+                    ? "text-amber-400"
+                    : "text-slate-600"
+                }`}
+              />
+            ))}
+            <span className="ml-1 text-[11px] font-mono text-amber-300">
+              ({record.overallStarRating || (record.overallRating === "Excellent" ? 5 : record.overallRating === "Acceptable" ? 4 : 2)}/5)
+            </span>
+          </div>
+        ) : ratingVal ? (
           ratingVal === "Could Be Better" ? (
             <span className="px-2.5 py-1 rounded-full bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30 text-xs font-bold inline-flex items-center gap-1">
               Could Be Better

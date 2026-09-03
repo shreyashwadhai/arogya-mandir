@@ -46,6 +46,7 @@ export interface FeedbackResponses {
   suggestionAudioUrl?: string | null;
   suggestionImageUrl?: string | null;
   isGrievanceEscalation: boolean;
+  overallStarRating: number;
 }
 
 export interface JourneyState {
@@ -122,6 +123,7 @@ const initialState: JourneyState = {
     suggestionAudioUrl: null,
     suggestionImageUrl: null,
     isGrievanceEscalation: false,
+    overallStarRating: 0,
   },
   trackingId: 'AM-FB-2026-42342',
   submissionTimestamp: null,
@@ -265,6 +267,7 @@ export const journeySlice = createSlice({
         suggestionAudioUrl: null,
         suggestionImageUrl: null,
         isGrievanceEscalation: false,
+        overallStarRating: 0,
       };
     }
   },
